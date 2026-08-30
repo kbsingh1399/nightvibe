@@ -1,0 +1,2949 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍸</text></svg>" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NightVibe India — Nightlife Pass, PR Bidding & Talent Network</title>
+  <meta name="description" content="India's premier nightlife marketplace and PR talent network. Discover club events, compare competitive PR bids, and hire top promoters across Mumbai, Goa, Bengaluru & Delhi." />
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: '#090a0f',
+            card: '#12141c',
+            'card-border': 'rgba(255, 255, 255, 0.08)',
+            neon: {
+              purple: '#9333ea',
+              violet: '#8b5cf6',
+              pink: '#ec4899',
+              cyan: '#06b6d4',
+              gold: '#f59e0b',
+              emerald: '#10b981',
+            }
+          },
+          fontFamily: {
+            sans: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18, ReactDOM, Babel, QRCode, Canvas Confetti CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/dist/confetti.browser.min.js"></script>
+  <!-- Razorpay SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <style>
+    body {
+      background-color: #06080e;
+      color: #e2e8f0;
+      font-family: 'Outfit', 'Inter', sans-serif;
+    }
+    .glass-panel {
+      background: rgba(12, 15, 24, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .glass-panel-hover {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-panel-hover:hover {
+      background: rgba(18, 22, 36, 0.95);
+      border-color: rgba(20, 184, 166, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px -5px rgba(20, 184, 166, 0.2);
+    }
+    button, .cursor-pointer {
+      transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease-out;
+    }
+    button:active, .cursor-pointer:active {
+      transform: scale(0.96) !important;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeInUp 0.4s ease-out forwards;
+    }
+    .stagger-1 { animation-delay: 50ms; }
+    .stagger-2 { animation-delay: 100ms; }
+    .stagger-3 { animation-delay: 150ms; }
+    .gradient-text-purple {
+      background: linear-gradient(135deg, #5eead4, #2dd4bf, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .gradient-text-cyan {
+      background: linear-gradient(135deg, #22d3ee, #67e8f9, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    /* ── NEW: Shimmer card hover effect ── */
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    .card-shimmer {
+      position: relative;
+      overflow: hidden;
+    }
+    .card-shimmer::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%);
+      background-size: 200% 100%;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .card-shimmer:hover::after {
+      opacity: 1;
+      animation: shimmer 0.8s ease forwards;
+    }
+    /* ── NEW: Pulse badge animation ── */
+    @keyframes badgePulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+      50% { opacity: 0.85; box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    }
+    .badge-pulse {
+      animation: badgePulse 1.8s ease-in-out infinite;
+    }
+    @keyframes badgePulseCyan {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.4); }
+      50% { box-shadow: 0 0 0 5px rgba(6, 182, 212, 0); }
+    }
+    .badge-pulse-cyan {
+      animation: badgePulseCyan 2s ease-in-out infinite;
+    }
+    /* ── NEW: Carousel ── */
+    @keyframes carouselFade {
+      0% { opacity: 0; transform: scale(1.03); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .carousel-slide {
+      animation: carouselFade 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    /* ── NEW: Horizontal scroll row ── */
+    .h-scroll-row {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 8px;
+      scrollbar-width: none;
+    }
+    .h-scroll-row::-webkit-scrollbar { display: none; }
+    .h-scroll-card {
+      scroll-snap-align: start;
+      flex-shrink: 0;
+    }
+    /* ── NEW: Occupancy bar ── */
+    @keyframes barGrow {
+      from { width: 0%; }
+    }
+    .occ-bar-fill {
+      animation: barGrow 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    /* ── NEW: Bottom sheet ── */
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .bottom-sheet {
+      animation: slideUp 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+    /* ── NEW: tabular nums for countdowns ── */
+    .countdown-font {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: 'tnum';
+      font-family: 'Outfit', monospace;
+    }
+    /* ── NEW: Glow on CTA hover ── */
+    .btn-glow:hover {
+      box-shadow: 0 0 24px rgba(20, 184, 166, 0.5), 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+    .btn-glow-cyan:hover {
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.4), 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+    /* ── scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(20,184,166,0.4); }
+  </style>
+</head>
+<body class="selection:bg-teal-500 selection:text-white min-h-screen overflow-x-hidden pb-16 md:pb-0">
+  <div id="root"></div>
+
+  <!-- Audio Synthesis Engine -->
+  <script>
+    window.SoundEngine = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+             this.ctx = new AudioContext();
+          }
+        }
+      },
+      play(type) {
+        if (!this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          const now = this.ctx.currentTime;
+          
+          if (type === 'click') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
+            gain.gain.setValueAtTime(0.02, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+          } else if (type === 'success') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.setValueAtTime(554.37, now + 0.1);
+            osc.frequency.setValueAtTime(659.25, now + 0.2);
+            gain.gain.setValueAtTime(0.03, now);
+            gain.gain.linearRampToValueAtTime(0.03, now + 0.3);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            osc.start(now);
+            osc.stop(now + 0.5);
+          } else if (type === 'modal') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(250, now);
+            osc.frequency.linearRampToValueAtTime(350, now + 0.15);
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.015, now + 0.05);
+            gain.gain.linearRampToValueAtTime(0, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+          } else if (type === 'error') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.linearRampToValueAtTime(150, now + 0.2);
+            gain.gain.setValueAtTime(0.02, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+          }
+        } catch (e) {
+          console.warn('SoundEngine error', e);
+        }
+      }
+    };
+  </script>
+  <!-- Main Application Script (Babel Transpiled) -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useContext, createContext } = React;
+
+    // --- DATA STORE ---
+    const CITIES = [
+      { id: 'mumbai', name: 'Mumbai', state: 'Maharashtra', count: '18 Clubs' },
+      { id: 'goa', name: 'North Goa', state: 'Goa', count: '14 Clubs' },
+      { id: 'bengaluru', name: 'Bengaluru', state: 'Karnataka', count: '12 Clubs' },
+      { id: 'delhi', name: 'Delhi-NCR', state: 'Delhi', count: '15 Clubs' },
+    ];
+
+    const GENRES = [
+      'All Vibes',
+      'Techno & Underground',
+      'Commercial EDM',
+      'Bollywood & Punjabi',
+      'Hip-Hop & R&B',
+      'Sunset Beach & Sundowner',
+      'VIP Table Lounges',
+    ];
+
+    const PR_SPECIALIZATIONS = [
+      'All Niches',
+      'VIP Bottle Tables',
+      'Fashion & Expat Crowd',
+      'Underground Techno',
+      'Bollywood & Punjabi',
+      'College & Youth Campus',
+      'Sunset & Afterhours',
+    ];
+
+    const INITIAL_VENUES = [
+      {
+        id: 'venue_trilogy',
+        name: 'Trilogy Club & Lounge',
+        city: 'mumbai',
+        area: 'Lower Parel, Mumbai',
+        image: 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?auto=format&fit=crop&w=1200&q=80',
+        logo: '🍸',
+        rating: 4.8,
+        reviewsCount: 342,
+        capacity: 650,
+        licensedCapacity: 700,
+        currentOccupancy: 347,
+        ownerName: 'Vikram Singhania',
+        ownerPhone: '+91 98201 54321',
+        upiId: 'trilogy.mumbai@icici',
+        dressCode: 'Smart Casuals mandatory. No open footwear for men.',
+        stagPolicy: 'Couples & Mixed Groups preferred.',
+        ageLimit: '21+',
+      },
+      {
+        id: 'venue_koko',
+        name: 'Kōkō Luxury Bar & Club',
+        city: 'mumbai',
+        area: 'Bandra West, Mumbai',
+        image: 'https://images.unsplash.com/photo-1574391884720-bbc3740c59d1?auto=format&fit=crop&w=1200&q=80',
+        logo: '🥢',
+        rating: 4.9,
+        reviewsCount: 428,
+        capacity: 400,
+        licensedCapacity: 450,
+        currentOccupancy: 280,
+        ownerName: 'Rohan & Ryan Tham',
+        ownerPhone: '+91 98199 87654',
+        upiId: 'koko.bandra@hdfcbank',
+        dressCode: 'Glamorous / High Fashion.',
+        stagPolicy: 'Strict 1:1 Couple ratio on weekends.',
+        ageLimit: '21+',
+      },
+      {
+        id: 'venue_raeeth',
+        name: 'Raeeth Beach Sanctuary',
+        city: 'goa',
+        area: 'Vagator Cliff, North Goa',
+        image: 'https://images.unsplash.com/photo-1545128485-c400e7702796?auto=format&fit=crop&w=1200&q=80',
+        logo: '🌴',
+        rating: 4.9,
+        reviewsCount: 612,
+        capacity: 800,
+        licensedCapacity: 900,
+        currentOccupancy: 512,
+        ownerName: 'Aditya Oberoi',
+        ownerPhone: '+91 97654 32109',
+        upiId: 'raeeth.goa@axisbank',
+        dressCode: 'Bohemian / Resort Chic.',
+        stagPolicy: 'Open entry with prior guestlist confirmation.',
+        ageLimit: '21+',
+      },
+      {
+        id: 'venue_bastian',
+        name: 'Bastian At The Top',
+        city: 'mumbai',
+        area: 'Dadar / Lower Parel, Mumbai',
+        image: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=1200&q=80',
+        logo: '🌊',
+        rating: 4.9,
+        reviewsCount: 520,
+        capacity: 500,
+        licensedCapacity: 550,
+        currentOccupancy: 390,
+        ownerName: 'Ranjit Bindra',
+        ownerPhone: '+91 98210 11223',
+        upiId: 'bastian.top@kotak',
+        dressCode: 'Chic / Upscale.',
+        stagPolicy: '1:1 Ratio or VIP table booking.',
+        ageLimit: '21+',
+      },
+      {
+        id: 'venue_diablo',
+        name: 'Diablo Cyber Club',
+        city: 'delhi',
+        area: 'Hauz Khas Village, Delhi',
+        image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
+        logo: '🔥',
+        rating: 4.7,
+        reviewsCount: 290,
+        capacity: 550,
+        licensedCapacity: 600,
+        currentOccupancy: 310,
+        ownerName: 'Karan Bhasin',
+        ownerPhone: '+91 99101 23456',
+        upiId: 'diablo.delhi@paytm',
+        dressCode: 'Smart Casuals.',
+        stagPolicy: 'Stags allowed with cover charge.',
+        ageLimit: '25+',
+      },
+    ];
+
+    const INITIAL_PROMOTERS = [
+      {
+        id: 'pr_rahul',
+        name: 'Rahul Mehta',
+        handle: '@MumbaiVIPPR',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+        city: 'mumbai',
+        niche: 'VIP Bottle Tables',
+        experience: '6 Years in Mumbai Nightlife',
+        college: 'NMIMS School of Commerce Alumni',
+        instagram: '@rahulmehta_vip',
+        bio: 'Lower Parel & Bandra Nightlife Host for 6+ years. Ranked #1 for high-spending table crowd and celebrity guest management.',
+        tier: 'Elite Gold',
+        rating: 4.9,
+        reviewsCount: 247,
+        conversions: 847,
+        showUpRate: 91,
+        verified: true,
+        upiId: 'rahul.pr@okhdfcbank',
+        phone: '+91 98202 99111',
+        badges: ['Top Rated 2026', 'Couples Specialist', 'Zero Disputes', 'VIP Table Master'],
+        authorizedVenues: ['venue_trilogy', 'venue_koko', 'venue_bastian'],
+        pastClients: ['Koko Bandra', 'Trilogy', 'Bastian', 'Dragonfly'],
+      },
+      {
+        id: 'pr_ananya',
+        name: 'Ananya Verma',
+        handle: '@BandraElitePR',
+        avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
+        city: 'mumbai',
+        niche: 'Fashion & Expat Crowd',
+        experience: '4 Years in Fashion PR',
+        college: 'Mithibai College Mumbai',
+        instagram: '@ananya_nightlife',
+        bio: 'Bandra/Juhu fashion, model, and expat PR. Curating bespoke guestlists for luxury gastro-bars and private rooftop parties.',
+        tier: 'Elite Gold',
+        rating: 4.8,
+        reviewsCount: 189,
+        conversions: 620,
+        showUpRate: 88,
+        verified: true,
+        upiId: 'ananya.nightlife@paytm',
+        phone: '+91 98111 22334',
+        badges: ['Fashion Crowd', 'Verified ID', 'Boutique Host'],
+        authorizedVenues: ['venue_koko', 'venue_bastian', 'venue_trilogy'],
+        pastClients: ['Koko Bandra', 'Bastian At The Top', 'Soho House'],
+      },
+      {
+        id: 'pr_sam',
+        name: 'DJ Sam & Crew',
+        handle: '@GoaUndergroundPR',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+        city: 'goa',
+        niche: 'Underground Techno',
+        experience: '8 Years in North Goa',
+        college: 'Goa Music Syndicate',
+        instagram: '@djsam_goaunderground',
+        bio: 'North Goa underground melodic techno curator. Connecting international traveling clubbers with cliffside sunsets & afterparties.',
+        tier: 'Pro Platinum',
+        rating: 4.9,
+        reviewsCount: 312,
+        conversions: 1120,
+        showUpRate: 94,
+        verified: true,
+        upiId: 'sam.goa@icici',
+        phone: '+91 97650 11223',
+        badges: ['Goa Master', 'Afterhours VIP', '1.1k+ Entrants'],
+        authorizedVenues: ['venue_raeeth'],
+        pastClients: ['Raeeth Goa', 'Hilltop', 'Thalassa', 'Chronicle'],
+      },
+      {
+        id: 'pr_kabir',
+        name: 'Kabir Oberoi',
+        handle: '@DelhiNightLifeIcon',
+        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+        city: 'delhi',
+        niche: 'Bollywood & Punjabi',
+        experience: '5 Years in HKV & Cyberhub',
+        college: 'Delhi University (DU) Hansraj',
+        instagram: '@kabir_delhivip',
+        bio: 'HKV & Cyberhub powerhouse. Free shooter tokens & high-octane Bollywood bottle service bookings.',
+        tier: 'Pro Silver',
+        rating: 4.7,
+        reviewsCount: 142,
+        conversions: 430,
+        showUpRate: 86,
+        verified: true,
+        upiId: 'kabir.nightlife@ybl',
+        phone: '+91 99112 33445',
+        badges: ['Delhi VIP Host', 'Stag Friendly'],
+        authorizedVenues: ['venue_diablo'],
+        pastClients: ['Diablo Delhi', 'Toy Room', 'Privee'],
+      },
+      {
+        id: 'pr_rhea',
+        name: 'Rhea Sen (Aspiring PR)',
+        handle: '@CampusVibeHost',
+        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
+        city: 'mumbai',
+        niche: 'College & Youth Campus',
+        experience: '1 Year - College Events Lead',
+        college: 'St. Xavier’s College Mumbai',
+        instagram: '@rhea_xaviers_vibe',
+        bio: 'Official campus nightlife coordinator. Managing 500+ student network across south Mumbai colleges for weekend club crawls.',
+        tier: 'Rising Star',
+        rating: 4.9,
+        reviewsCount: 48,
+        conversions: 210,
+        showUpRate: 92,
+        verified: true,
+        upiId: 'rhea.sen@oksbi',
+        phone: '+91 98333 44556',
+        badges: ['Campus Lead', 'Rising Star', 'High Turnout'],
+        authorizedVenues: ['venue_trilogy'],
+        pastClients: ['Trilogy Club', 'Lord of the Drinks'],
+      },
+    ];
+
+    const INITIAL_EVENTS = [
+      {
+        id: 'evt_trilogy_sunburn',
+        venueId: 'venue_trilogy',
+        title: 'Sunburn Arena ft. KSHMR & Friends',
+        genre: 'Commercial EDM',
+        date: 'Saturday, Tonight',
+        time: '10:00 PM - 03:00 AM',
+        image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
+        basePrice: 2000,
+        floorPrice: 1600,
+        commissionCap: 300,
+        description: 'Global EDM superstar KSHMR lands in Mumbai for an exclusive club arena showcase. Massive drops and unreleased anthems.',
+        approvedPerks: [
+          { id: 'perk_shooter', name: '1 Free Shooter / Cocktail Token', value: 350 },
+          { id: 'perk_fasttrack', name: 'Fast-Track Queue Bypass (<5m wait)', value: 400 },
+          { id: 'perk_female_free', name: 'Female Guestlist Free (before 11 PM)', value: 500 },
+          { id: 'perk_table_discount', name: '10% Off Bottle Service Menu', value: 800 },
+        ],
+        bids: [
+          {
+            id: 'bid_1',
+            prId: 'pr_rahul',
+            price: 1650,
+            perks: ['perk_fasttrack', 'perk_shooter'],
+            notes: 'Includes 1 Premium Shooter + Express entry gate stamp.',
+          },
+          {
+            id: 'bid_2',
+            prId: 'pr_ananya',
+            price: 1750,
+            perks: ['perk_female_free', 'perk_table_discount'],
+            notes: 'Couple deal + 1:1 Female partner free entry before 11:15 PM.',
+          },
+        ],
+      },
+      {
+        id: 'evt_koko_friday',
+        venueId: 'venue_koko',
+        title: 'Neon Tokyo: Melodic House & Nu-Disco',
+        genre: 'Techno & Underground',
+        date: 'Friday, Tomorrow',
+        time: '09:30 PM - 02:30 AM',
+        image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80',
+        basePrice: 1800,
+        floorPrice: 1500,
+        commissionCap: 250,
+        description: 'Immerse in Tokyo underground neon aesthetics with deep basslines, craft Asian cocktails, and an elite crowd.',
+        approvedPerks: [
+          { id: 'perk_shooter', name: '1 Complimentary Craft Cocktail', value: 450 },
+          { id: 'perk_fasttrack', name: 'VIP Host Queue Bypass', value: 400 },
+        ],
+        bids: [
+          {
+            id: 'bid_3',
+            prId: 'pr_ananya',
+            price: 1550,
+            perks: ['perk_shooter', 'perk_fasttrack'],
+            notes: 'Priority guestlist with bespoke Saké cocktail at the bar.',
+          },
+          {
+            id: 'bid_4',
+            prId: 'pr_rahul',
+            price: 1600,
+            perks: ['perk_fasttrack'],
+            notes: 'Instant entry stamp + dedicated bar lounge access.',
+          },
+        ],
+      },
+      {
+        id: 'evt_raeeth_sunset',
+        venueId: 'venue_raeeth',
+        title: 'Cliffside Rituals: Deep Melodic Sundowner',
+        genre: 'Sunset Beach & Sundowner',
+        date: 'Sunday Sundowner',
+        time: '04:30 PM - 01:00 AM',
+        image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1200&q=80',
+        basePrice: 2200,
+        floorPrice: 1800,
+        commissionCap: 350,
+        description: 'Watch the sun sink into the Arabian sea as the tempo rises. Hypnotic visuals, fire dancers, and beachfront vibes.',
+        approvedPerks: [
+          { id: 'perk_shooter', name: '1 Free Sundowner Sangria', value: 400 },
+          { id: 'perk_fasttrack', name: 'Skip General Beach Queue', value: 350 },
+        ],
+        bids: [
+          {
+            id: 'bid_5',
+            prId: 'pr_sam',
+            price: 1850,
+            perks: ['perk_shooter', 'perk_fasttrack'],
+            notes: 'Best sunset view deck pass + 1 glass of Spanish red Sangria.',
+          },
+        ],
+      },
+      {
+        id: 'evt_bastian_saturday',
+        venueId: 'venue_bastian',
+        title: 'Sky High Saturdays: Bollywood & Glamour',
+        genre: 'Bollywood & Punjabi',
+        date: 'Saturday, Tonight',
+        time: '10:30 PM - 03:00 AM',
+        image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80',
+        basePrice: 2500,
+        floorPrice: 2000,
+        commissionCap: 400,
+        description: 'Mumbai’s highest club experience on the 48th floor. Dazzling sky deck and celebrity sightings.',
+        approvedPerks: [
+          { id: 'perk_shooter', name: '1 Tequila Gold Shot', value: 500 },
+          { id: 'perk_fasttrack', name: 'Direct Rooftop Elevator Bypass', value: 600 },
+        ],
+        bids: [
+          {
+            id: 'bid_6',
+            prId: 'pr_rahul',
+            price: 2100,
+            perks: ['perk_fasttrack', 'perk_shooter'],
+            notes: 'Elevator bypass stamp + 1 Patron shot on arrival.',
+          },
+        ],
+      },
+    ];
+
+    const INITIAL_BOOKINGS = [
+      {
+        id: 'TKT-8842',
+        eventId: 'evt_trilogy_sunburn',
+        venueId: 'venue_trilogy',
+        prId: 'pr_rahul',
+        guestName: 'Arjun Kapoor',
+        guestPhone: '+91 98200 44321',
+        guestEmail: 'arjun.k@gmail.com',
+        maleCount: 1,
+        femaleCount: 1,
+        pax: 2,
+        pricePerPax: 1650,
+        totalPaid: 3390,
+        platformFee: 90,
+        prCommission: 450,
+        venueNet: 2850,
+        perks: ['Fast-Track Queue Bypass', '1 Free Shooter Token'],
+        status: 'ACTIVE',
+        bookingTime: 'Today, 08:30 PM',
+        qrToken: 'NV1-TKT8842-99F8A2B',
+      },
+      {
+        id: 'TKT-5519',
+        eventId: 'evt_trilogy_sunburn',
+        venueId: 'venue_trilogy',
+        prId: 'pr_ananya',
+        guestName: 'Pooja Hegde & Group',
+        guestPhone: '+91 98330 11999',
+        guestEmail: 'pooja.h@yahoo.com',
+        maleCount: 2,
+        femaleCount: 2,
+        pax: 4,
+        pricePerPax: 1750,
+        totalPaid: 7180,
+        platformFee: 180,
+        prCommission: 800,
+        venueNet: 6200,
+        perks: ['Female Guestlist Free (before 11 PM)', '10% Off Bottle Service Menu'],
+        status: 'CHECKED_IN',
+        bookingTime: 'Today, 07:15 PM',
+        scannedAt: '10:45 PM',
+        scannedBy: 'Club Manager (In-App)',
+        qrToken: 'NV1-TKT5519-77A1C3E',
+      },
+    ];
+
+    const INITIAL_TRANSACTIONS = [
+      {
+        id: 'TXN-9021',
+        bookingId: 'TKT-5519',
+        eventTitle: 'Sunburn Arena ft. KSHMR',
+        venueName: 'Trilogy Club',
+        prName: 'Ananya Verma (@BandraElitePR)',
+        grossAmount: 7000,
+        venueShare: 6200,
+        prCommission: 800,
+        tdsDeducted: 16,
+        netPrPayout: 784,
+        status: 'SETTLED',
+        settlementTimestamp: 'Today, 10:46 PM',
+      },
+    ];
+
+    // --- APP CONTEXT ---
+    const AppContext = createContext();
+
+    const AppProvider = ({ children }) => {
+      const [role, setRole] = useState(() => localStorage.getItem('nv_role') || 'guest');
+      const [activeCity, setActiveCity] = useState(() => localStorage.getItem('nv_city') || 'mumbai');
+      const [selectedGenre, setSelectedGenre] = useState('All Vibes');
+      const [selectedNiche, setSelectedNiche] = useState('All Niches');
+      const [activeView, setActiveView] = useState('events'); // 'events' | 'pr_network'
+      const [searchQuery, setSearchQuery] = useState('');
+
+      const [venues, setVenues] = useState(() => {
+        const saved = localStorage.getItem('nv_venues');
+        return saved ? JSON.parse(saved) : INITIAL_VENUES;
+      });
+
+      const [promoters, setPromoters] = useState(() => {
+        const saved = localStorage.getItem('nv_promoters');
+        return saved ? JSON.parse(saved) : INITIAL_PROMOTERS;
+      });
+
+      const [events, setEvents] = useState(() => {
+        const saved = localStorage.getItem('nv_events');
+        return saved ? JSON.parse(saved) : INITIAL_EVENTS;
+      });
+
+      const [bookings, setBookings] = useState(() => {
+        const saved = localStorage.getItem('nv_bookings');
+        return saved ? JSON.parse(saved) : INITIAL_BOOKINGS;
+      });
+
+      const [transactions, setTransactions] = useState(() => {
+        const saved = localStorage.getItem('nv_transactions');
+        return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+      });
+
+      const [currentUser, setCurrentUser] = useState({
+        name: 'Arjun Kapoor',
+        phone: '+91 98200 44321',
+        email: 'arjun.k@gmail.com',
+        upiId: 'arjun@okaxis',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+      });
+
+      const [activeOwnerVenueId, setActiveOwnerVenueId] = useState('venue_trilogy');
+      const [activePrId, setActivePrId] = useState('pr_rahul');
+
+      const [toast, setToast] = useState(null);
+
+      const showToast = (message, type = 'success') => {
+        setToast({ message, type, id: Date.now() });
+        setTimeout(() => setToast(null), 4000);
+      };
+
+      useEffect(() => localStorage.setItem('nv_role', role), [role]);
+      useEffect(() => localStorage.setItem('nv_city', activeCity), [activeCity]);
+      useEffect(() => localStorage.setItem('nv_venues', JSON.stringify(venues)), [venues]);
+      useEffect(() => localStorage.setItem('nv_promoters', JSON.stringify(promoters)), [promoters]);
+      useEffect(() => localStorage.setItem('nv_events', JSON.stringify(events)), [events]);
+      useEffect(() => localStorage.setItem('nv_bookings', JSON.stringify(bookings)), [bookings]);
+      useEffect(() => localStorage.setItem('nv_transactions', JSON.stringify(transactions)), [transactions]);
+
+      // Add New PR Profile (LinkedIn for PRs)
+      // BUG FIX: New PRs start as pending_verification=true (not instantly live-verified)
+      // BUG FIX: Handle generation guards against empty name producing '@PR'
+      const registerPRProfile = (newPrData) => {
+        const safeName = (newPrData.name || 'NewHost').trim();
+        const newId = `pr_${Date.now()}`;
+        const newPr = {
+          id: newId,
+          name: safeName,
+          handle: `@${safeName.replace(/\s+/g, '')}PR`,
+          avatar: newPrData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+          city: newPrData.city || 'mumbai',
+          niche: newPrData.niche || 'College & Youth Campus',
+          experience: newPrData.experience || 'Aspiring Club Host',
+          college: newPrData.college || 'Mumbai University',
+          instagram: newPrData.instagram || `@${safeName.toLowerCase().replace(/\s+/g, '_')}`,
+          bio: newPrData.bio || 'Passionate about nightlife hosting, student crowd management and exclusive event access.',
+          tier: 'Rising Star',
+          rating: 5.0,
+          reviewsCount: 1,
+          conversions: 0,
+          showUpRate: 100,
+          verified: false,       // Starts pending — club owner or platform verifies
+          pendingVerification: true,
+          upiId: newPrData.upiId || 'pr.wallet@upi',
+          phone: newPrData.phone || '+91 98000 00000',
+          badges: ['New Talent', '⏳ Pending Verification', 'Ready to Host'],
+          authorizedVenues: [],  // No venues until a club owner authorizes
+          pastClients: [],
+        };
+
+        setPromoters((prev) => [newPr, ...prev]);
+        showToast(`🎉 Profile submitted! ${safeName}, a club owner will verify and authorize you shortly.`, 'success');
+        return newPr;
+      };
+
+      // Authorize / Recruit PR for Venue (Club Owner Action - Free Feature)
+      // BUG FIX: Read pr/venue names BEFORE setPromoters to avoid stale closure snapshot
+      const authorizePRForVenue = (prId, venueId) => {
+        const venue = venues.find((v) => v.id === venueId);
+        const pr = promoters.find((p) => p.id === prId);
+        setPromoters((prev) =>
+          prev.map((p) => {
+            if (p.id !== prId) return p;
+            if (p.authorizedVenues.includes(venueId)) return p;
+            // When a club owner authorizes, also mark as verified
+            return { ...p, authorizedVenues: [...p.authorizedVenues, venueId], verified: true, pendingVerification: false };
+          })
+        );
+        showToast(`🤝 Authorized! ${pr?.name} can now host & bid for ${venue?.name}.`, 'success');
+      };
+
+      // Book Ticket
+      // BUG FIX: commission floor guard — venueNet can never go below 60% of subtotal
+      const bookTicket = ({ event, prBid, groupDetails, paymentMethod = 'UPI', razorpayPaymentId = null }) => {
+        const pr = promoters.find((p) => p.id === prBid.prId) || promoters[0];
+        const venue = venues.find((v) => v.id === event.venueId) || venues[0];
+
+        const pax = Math.max(1, (groupDetails.maleCount || 0) + (groupDetails.femaleCount || 0));
+        const subtotal = prBid.price * pax;
+        const platformFee = Math.round(subtotal * 0.035) + 40;
+        const totalPaid = subtotal + platformFee;
+
+        // Commission: discount passed + ₹120 base, floored at ₹150, capped so venueNet ≥ 60% of subtotal
+        const rawCommissionPerPax = Math.max(150, (event.basePrice - prBid.price) + 120);
+        const maxCommissionPerPax = Math.floor(subtotal * 0.40 / pax); // venue always keeps ≥60%
+        const prCommissionPerPax = Math.min(rawCommissionPerPax, maxCommissionPerPax);
+        const totalPrCommission = prCommissionPerPax * pax;
+        const venueNet = Math.max(0, subtotal - totalPrCommission);
+
+        const newTicketId = `TKT-${Math.floor(1000 + Math.random() * 9000)}`;
+        const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const qrToken = `NV1-${newTicketId}-${randomHex}`;
+
+        const newBooking = {
+          id: newTicketId,
+          eventId: event.id,
+          venueId: event.venueId,
+          prId: pr.id,
+          guestName: groupDetails.guestName || currentUser.name,
+          guestPhone: groupDetails.guestPhone || currentUser.phone,
+          guestEmail: groupDetails.guestEmail || currentUser.email,
+          maleCount: groupDetails.maleCount || 1,
+          femaleCount: groupDetails.femaleCount || 1,
+          pax,
+          pricePerPax: prBid.price,
+          totalPaid,
+          platformFee,
+          prCommission: totalPrCommission,
+          venueNet,
+          perks: prBid.perks.map((pId) => {
+            const perkObj = event.approvedPerks?.find((ap) => ap.id === pId);
+            return perkObj ? perkObj.name : pId;
+          }),
+          status: 'ACTIVE',
+          bookingTime: 'Just now',
+          qrToken,
+          paymentMethod,
+          razorpayPaymentId,
+        };
+
+        setBookings((prev) => [newBooking, ...prev]);
+        setPromoters((prev) =>
+          prev.map((p) => (p.id === pr.id ? { ...p, conversions: p.conversions + 1 } : p))
+        );
+
+        showToast(`🎉 Pass Unlocked! Dynamic QR Generated for ${venue.name}`, 'success');
+        return newBooking;
+      };
+
+      // Door Scan
+      // BUG FIX: Guard REJECTED status separately — distinct toast from CHECKED_IN duplicate
+      const scanTicket = (ticketId, action, reason = '') => {
+        const booking = bookings.find((b) => b.id === ticketId || b.qrToken === ticketId);
+        if (!booking) {
+          showToast('❌ Invalid Pass: QR Token not found in manifest', 'error');
+          return { success: false };
+        }
+
+        if (booking.status === 'CHECKED_IN') {
+          showToast('⚠️ Duplicate Scan: This guest has already been admitted. Possible fraud attempt.', 'error');
+          return { success: false };
+        }
+
+        if (booking.status === 'REJECTED') {
+          showToast('🚫 Pass Denied: This ticket was previously rejected. Refund already processed.', 'error');
+          return { success: false };
+        }
+
+        if (action === 'ADMIT') {
+          const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          setBookings((prev) =>
+            prev.map((b) =>
+              b.id === booking.id
+                ? { ...b, status: 'CHECKED_IN', scannedAt: nowTime, scannedBy: 'Club Manager (In-App)' }
+                : b
+            )
+          );
+
+          const tdsDeducted = Math.round(booking.prCommission * 0.02);
+          const netPrPayout = booking.prCommission - tdsDeducted;
+          const pr = promoters.find((p) => p.id === booking.prId);
+          const venue = venues.find((v) => v.id === booking.venueId);
+
+          const newTxn = {
+            id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+            bookingId: booking.id,
+            eventTitle: events.find((e) => e.id === booking.eventId)?.title || 'Club Event',
+            venueName: venue?.name || 'Club Venue',
+            prName: `${pr?.name} (${pr?.handle})`,
+            grossAmount: booking.totalPaid - booking.platformFee,
+            venueShare: booking.venueNet,
+            prCommission: booking.prCommission,
+            tdsDeducted,
+            netPrPayout,
+            status: 'SETTLED',
+            settlementTimestamp: `Today, ${nowTime}`,
+          };
+
+          setTransactions((prev) => [newTxn, ...prev]);
+          setVenues((prev) =>
+            prev.map((v) =>
+              v.id === booking.venueId
+                ? { ...v, currentOccupancy: Math.min(v.licensedCapacity, v.currentOccupancy + booking.pax) }
+                : v
+            )
+          );
+
+          showToast(`✅ Entry Granted for ${booking.guestName} (${booking.pax} pax). ₹${netPrPayout} instant commission routed to ${pr?.name}!`, 'success');
+          return { success: true };
+        } else if (action === 'REJECT') {
+          setBookings((prev) =>
+            prev.map((b) =>
+              b.id === booking.id
+                ? { ...b, status: 'REJECTED', rejectionReason: reason, rejectedAt: new Date().toLocaleTimeString() }
+                : b
+            )
+          );
+          showToast(`🚫 Entry Denied: ${reason}. Full ticket refunded from Club Reserve.`, 'warning');
+          return { success: true };
+        }
+      };
+
+      // Submit PR Bid
+      const submitPRBid = (eventId, prId, price, selectedPerks, notes) => {
+        setEvents((prev) =>
+          prev.map((evt) => {
+            if (evt.id !== eventId) return evt;
+            const existingIdx = evt.bids.findIndex((b) => b.prId === prId);
+            const newBid = {
+              id: existingIdx >= 0 ? evt.bids[existingIdx].id : `bid_${Date.now()}`,
+              prId,
+              price: Number(price),
+              perks: selectedPerks,
+              notes: notes || 'Exclusive perks and priority entry via verified PR.',
+            };
+            const updated = [...evt.bids];
+            if (existingIdx >= 0) updated[existingIdx] = newBid;
+            else updated.push(newBid);
+            return { ...evt, bids: updated };
+          })
+        );
+        showToast('✨ Dynamic PR Bid Published! Your competitive offer is now live.', 'success');
+      };
+
+      // Create Event
+      const createEvent = (newEventData) => {
+        const newId = `evt_${Date.now()}`;
+        const fullEvent = {
+          id: newId,
+          venueId: activeOwnerVenueId,
+          title: newEventData.title,
+          genre: newEventData.genre || 'Commercial EDM',
+          date: newEventData.date || 'Saturday, Tonight',
+          time: newEventData.time || '10:00 PM - 03:00 AM',
+          image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+          basePrice: Number(newEventData.basePrice) || 2000,
+          floorPrice: Number(newEventData.floorPrice) || 1600,
+          commissionCap: Number(newEventData.commissionCap) || 300,
+          description: newEventData.description || 'Exclusive club night with top DJs and dynamic PR perks.',
+          approvedPerks: [
+            { id: 'perk_shooter', name: '1 Free Shooter / Cocktail Token', value: 350 },
+            { id: 'perk_fasttrack', name: 'Fast-Track Queue Bypass', value: 400 },
+          ],
+          bids: [],
+        };
+        setEvents((prev) => [fullEvent, ...prev]);
+        showToast(`🎉 Event "${fullEvent.title}" created! Approved PRs can now start bidding.`, 'success');
+      };
+
+      return (
+        <AppContext.Provider
+          value={{
+            role,
+            setRole,
+            activeCity,
+            setActiveCity,
+            selectedGenre,
+            setSelectedGenre,
+            selectedNiche,
+            setSelectedNiche,
+            activeView,
+            setActiveView,
+            searchQuery,
+            setSearchQuery,
+            venues,
+            promoters,
+            events,
+            bookings,
+            transactions,
+            currentUser,
+            setCurrentUser,
+            activeOwnerVenueId,
+            setActiveOwnerVenueId,
+            activePrId,
+            setActivePrId,
+            toast,
+            showToast,
+            registerPRProfile,
+            authorizePRForVenue,
+            bookTicket,
+            scanTicket,
+            submitPRBid,
+            createEvent,
+          }}
+        >
+          {children}
+        </AppContext.Provider>
+      );
+    };
+
+    const useApp = () => useContext(AppContext);
+
+    // --- HEADER COMPONENT ---
+    const Header = ({ onOpenPasses, onOpenCreatePR, onOpenAuth }) => {
+      const { role, setRole, activeCity, setActiveCity, activeView, setActiveView, bookings, currentUser } = useApp();
+      const [cityDropdown, setCityDropdown] = useState(false);
+      const activeCount = bookings.filter((b) => b.status === 'ACTIVE').length;
+
+      return (
+        <header className="sticky top-0 z-40 border-b border-white/[0.04]" style={{background: 'rgba(6,8,14,0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)'}}>
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
+            <div className="flex items-center justify-between h-[56px] gap-3">
+
+              {/* Logo + City */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => { setRole('guest'); setActiveView('events'); }}>
+                  <span className="text-xl font-black tracking-tight text-white">
+                    NIGHT<span className="gradient-text-purple">VIBE</span>
+                  </span>
+                </div>
+
+                {/* City Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setCityDropdown(!cityDropdown)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-xs text-slate-300 transition"
+                  >
+                    <span className="text-[10px]">📍</span>
+                    <span>{CITIES.find((c) => c.id === activeCity)?.name || 'Mumbai'}</span>
+                    <span className="text-[9px] text-slate-500 ml-0.5">▾</span>
+                  </button>
+
+                  {cityDropdown && (
+                    <div className="absolute left-0 mt-1.5 w-48 rounded-xl p-1.5 shadow-2xl z-50" style={{background: 'rgba(12,15,24,0.97)', border: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(16px)'}}>
+                      {CITIES.map((city) => (
+                        <button
+                          key={city.id}
+                          onClick={() => {
+                            setActiveCity(city.id);
+                            setCityDropdown(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition ${
+                            activeCity === city.id
+                              ? 'bg-teal-500/15 text-teal-300'
+                              : 'text-slate-300 hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          <span>{city.name}</span>
+                          <span className="text-[10px] text-slate-500">{city.count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Center Nav */}
+              <div className="hidden lg:flex items-center gap-0.5 p-0.5 rounded-lg bg-white/[0.03]">
+                <button
+                  onClick={() => setActiveView('events')}
+                  className={`px-3 py-1 rounded-md text-[11px] font-semibold transition ${
+                    activeView === 'events' ? 'bg-teal-500/20 text-teal-300' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Events
+                </button>
+                <button
+                  onClick={() => setActiveView('pr_network')}
+                  className={`px-3 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1 ${
+                    activeView === 'pr_network' ? 'bg-teal-500/20 text-teal-300' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  PR Directory
+                  <span className="text-[8px] font-black bg-amber-500 text-black px-1 py-px rounded leading-none">NEW</span>
+                </button>
+              </div>
+
+              {/* Right side: roles + actions */}
+              <div className="flex items-center gap-2">
+                {/* Role switcher */}
+                <div className="flex items-center gap-px p-0.5 rounded-lg bg-white/[0.03]">
+                  {[
+                    { key: 'guest', label: 'Guest', icon: '🎧' },
+                    { key: 'owner', label: 'Club', icon: '🏢' },
+                    { key: 'pr', label: 'PR', icon: '👑' },
+                  ].map(r => (
+                    <button
+                      key={r.key}
+                      onClick={() => { setRole(r.key); setActiveView('events'); }}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition ${
+                        role === r.key
+                          ? 'bg-teal-500/20 text-teal-300'
+                          : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      <span className="text-xs">{r.icon}</span>
+                      <span className="hidden sm:inline">{r.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Passes badge */}
+                {role === 'guest' && (
+                  <button
+                    onClick={onOpenPasses}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-teal-300 bg-white/[0.03] hover:bg-teal-500/10 transition"
+                  >
+                    🎟️
+                    <span className="hidden sm:inline">Passes</span>
+                    {activeCount > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-teal-500 text-[9px] text-black flex items-center justify-center font-black">
+                        {activeCount}
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                {/* Join as PR */}
+                <button
+                  onClick={onOpenCreatePR}
+                  title="Join as PR"
+                  className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-amber-300 bg-white/[0.03] hover:bg-amber-500/10 transition"
+                >
+                  ✨ <span>Join PR</span>
+                </button>
+
+                {/* Avatar */}
+                <img
+                  src={currentUser.avatar}
+                  alt="User"
+                  onClick={onOpenAuth}
+                  className="w-7 h-7 rounded-full object-cover ring-1 ring-white/10 hover:ring-teal-500/40 cursor-pointer transition"
+                />
+              </div>
+            </div>
+          </div>
+        </header>
+      );
+    };
+
+    // --- PR TALENT NETWORK (LINKEDIN FOR NIGHTLIFE PRs) ---
+    const PRTalentNetworkView = ({ onOpenCreatePR }) => {
+      const { promoters, venues, activeCity, selectedNiche, setSelectedNiche, role, activeOwnerVenueId, authorizePRForVenue, showToast } = useApp();
+      const [selectedPRModal, setSelectedPRModal] = useState(null);
+      const [recruitmentMessageSent, setRecruitmentMessageSent] = useState(false);
+
+      const filteredPRs = promoters.filter((pr) => {
+        const cityMatch = pr.city === activeCity;
+        const nicheMatch = selectedNiche === 'All Niches' || pr.niche === selectedNiche;
+        return cityMatch && nicheMatch;
+      });
+
+      const currentVenue = venues.find((v) => v.id === activeOwnerVenueId) || venues[0];
+
+      return (
+        <div className="space-y-8">
+          
+          {/* Hero Banner for PR Talent Directory */}
+          <div className="relative rounded-3xl overflow-hidden glass-panel border border-cyan-500/20 p-6 sm:p-10 shadow-2xl">
+            <div className="relative z-10 max-w-3xl space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold">
+                <span>💼</span>
+                <span>The LinkedIn for Nightlife Promoters & Hosts</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-black text-white leading-tight font-sans">
+                Discover, Scout & Hire <span className="gradient-text-cyan">Top PR Talent</span>
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-300">
+                Verified portfolio of nightlife hosts, college campus leads, and VIP table curators. Clubs hire for free; aspiring PRs build their verified track record.
+              </p>
+              
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={onOpenCreatePR}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 text-black text-xs font-black shadow-lg transition flex items-center gap-1.5"
+                >
+                  <span>✨ Create Your PR Profile (Free)</span>
+                </button>
+                <span className="text-xs text-slate-400">
+                  {role === 'owner' ? `🔍 Scouting for ${currentVenue.name}` : '⚡ 100% Direct Payouts & Zero Middleman'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Niche / Specialization Filter */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-300 uppercase tracking-wider">Filter by PR Specialization</span>
+              <span className="text-slate-500">{filteredPRs.length} Hosts Available in {CITIES.find(c => c.id === activeCity)?.name}</span>
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              {PR_SPECIALIZATIONS.map((niche) => (
+                <button
+                  key={niche}
+                  onClick={() => setSelectedNiche(niche)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+                    selectedNiche === niche
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black font-bold shadow-md'
+                      : 'bg-white/5 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {niche}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* PR Profile Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredPRs.map((pr) => {
+              const isAuthorizedForCurrentClub = pr.authorizedVenues.includes(currentVenue.id);
+
+              return (
+                <div
+                  key={pr.id}
+                  className="rounded-3xl glass-panel glass-panel-hover overflow-hidden border border-white/10 p-5 flex flex-col justify-between space-y-4"
+                >
+                  {/* Top Profile Header */}
+                  <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={pr.avatar}
+                          alt={pr.name}
+                          className="w-14 h-14 rounded-2xl object-cover ring-2 ring-cyan-500/40 shadow-lg"
+                        />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <h3 className="text-sm font-bold text-white">{pr.name}</h3>
+                            {pr.verified
+                              ? <span className="text-cyan-400 text-xs" title="Verified">✔</span>
+                              : pr.pendingVerification && <span className="text-amber-400 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/30">PENDING</span>
+                            }
+                          </div>
+                          <p className="text-[11px] text-cyan-300 font-semibold">{pr.handle}</p>
+                          <p className="text-[10px] text-slate-400">{pr.experience}</p>
+                        </div>
+                      </div>
+
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        pr.tier === 'Elite Gold' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                        pr.tier === 'Pro Platinum' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                        pr.tier === 'Pro Silver' ? 'bg-slate-400/20 text-slate-300 border-slate-400/30' :
+                        'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                      }`}>
+                        {pr.tier}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-300 line-clamp-2 mt-3 leading-relaxed">
+                      {pr.bio}
+                    </p>
+
+                    {/* Key Metrics Pill Bar */}
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs mt-3.5 p-2.5 rounded-2xl bg-black/40 border border-white/5">
+                      <div>
+                        <span className="text-[9px] text-slate-400 uppercase block">Admissions</span>
+                        <span className="font-black text-white">{pr.conversions}+</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 uppercase block">Show-up</span>
+                        <span className="font-black text-emerald-400">{pr.showUpRate}%</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 uppercase block">Rating</span>
+                        <span className="font-black text-amber-400">⭐ {pr.rating}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {pr.badges.map((b, i) => (
+                        <span key={i} className="text-[9px] font-medium px-2 py-0.5 rounded-md bg-white/5 text-teal-300 border border-white/5">
+                          {b}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="pt-3 border-t border-white/10 flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedPRModal(pr)}
+                      className="flex-1 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition text-center"
+                    >
+                      View Full Profile
+                    </button>
+
+                    {role === 'owner' ? (
+                      <button
+                        onClick={() => authorizePRForVenue(pr.id, currentVenue.id)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                          isAuthorizedForCurrentClub
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black'
+                        }`}
+                      >
+                        {isAuthorizedForCurrentClub ? '✔ Authorized' : '+ Authorize PR'}
+                      </button>
+                    ) : (
+                      <a
+                        href={`https://wa.me/${pr.phone.replace(/[^0-9]/g, '')}?text=Hi%20${pr.name},%20saw%20your%20PR%20profile%20on%20NightVibe!`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold transition"
+                        title="Chat on WhatsApp"
+                      >
+                        💬
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Full PR Profile Detail Modal */}
+          {selectedPRModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+              <div className="relative w-full max-w-lg rounded-3xl glass-panel my-8 p-6 shadow-2xl border border-cyan-500/40 space-y-5">
+                <button
+                  onClick={() => setSelectedPRModal(null)}
+                  className="absolute top-5 right-5 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400"
+                >
+                  ✕
+                </button>
+
+                <div className="flex items-center gap-4">
+                  <img src={selectedPRModal.avatar} alt={selectedPRModal.name} className="w-16 h-16 rounded-2xl object-cover ring-2 ring-cyan-500/50" />
+                  <div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">
+                      {selectedPRModal.tier} • {selectedPRModal.niche}
+                    </span>
+                    <h3 className="text-xl font-black text-white">{selectedPRModal.name}</h3>
+                    <p className="text-xs text-slate-400">{selectedPRModal.handle} • {selectedPRModal.city.toUpperCase()}</p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed bg-black/30 p-3.5 rounded-2xl border border-white/5">
+                  "{selectedPRModal.bio}"
+                </p>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between border-b border-white/5 pb-1.5">
+                    <span className="text-slate-400">College / Network:</span>
+                    <span className="font-semibold text-white">{selectedPRModal.college}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-white/5 pb-1.5">
+                    <span className="text-slate-400">Instagram:</span>
+                    <span className="font-mono text-cyan-300">{selectedPRModal.instagram}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-white/5 pb-1.5">
+                    <span className="text-slate-400">Past Partner Clubs:</span>
+                    <span className="text-cyan-300 font-semibold">{selectedPRModal.pastClients?.join(', ') || 'Top Metros'}</span>
+                  </div>
+                  <div className="flex justify-between pb-1.5">
+                    <span className="text-slate-400">Verified Door Admissions:</span>
+                    <span className="font-bold text-emerald-400">{selectedPRModal.conversions}+ Entrants</span>
+                  </div>
+                </div>
+
+                {role === 'owner' ? (
+                  <button
+                    onClick={() => {
+                      authorizePRForVenue(selectedPRModal.id, currentVenue.id);
+                      setSelectedPRModal(null);
+                    }}
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs font-black shadow-lg"
+                  >
+                    Authorize {selectedPRModal.name} to Bid for {currentVenue.name} (Free)
+                  </button>
+                ) : (
+                  <a
+                    href={`https://wa.me/${selectedPRModal.phone.replace(/[^0-9]/g, '')}?text=Hi%20${selectedPRModal.name},%20interested%20in%20your%20guestlist/table%20services%20via%20NightVibe!`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black shadow-lg text-center block"
+                  >
+                    💬 Message {selectedPRModal.name} on WhatsApp
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // --- CREATE / CLAIM PR PROFILE MODAL ---
+    const CreatePRProfileModal = ({ isOpen, onClose }) => {
+      const { registerPRProfile, activeCity } = useApp();
+      const [formData, setFormData] = useState({
+        name: '',
+        niche: 'VIP Bottle Tables',
+        city: activeCity,
+        college: '',
+        instagram: '',
+        bio: '',
+        phone: '',
+        upiId: '',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      });
+
+      if (!isOpen) return null;
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        registerPRProfile(formData);
+        onClose();
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-3xl glass-panel p-6 shadow-2xl border border-cyan-500/40 my-8">
+            <button onClick={onClose} className="absolute top-5 right-5 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400">
+              ✕
+            </button>
+
+            <div className="text-center space-y-1.5 mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 p-[2px] mx-auto">
+                <div className="w-full h-full bg-[#0d0f17] rounded-[14px] flex items-center justify-center text-2xl">
+                  👑
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-white font-sans">
+                Create Your Nightlife PR Profile
+              </h3>
+              <p className="text-xs text-slate-400">
+                Join the LinkedIn for Nightlife PRs. Get discovered & hired by top clubs in India.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Full Name / PR Brand</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Sameer Kapoor"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Metro City</label>
+                  <select
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white"
+                  >
+                    {CITIES.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Primary Niche</label>
+                  <select
+                    value={formData.niche}
+                    onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white"
+                  >
+                    {PR_SPECIALIZATIONS.filter(n => n !== 'All Niches').map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">College / Network</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. NMIMS / DU / St. Xavier's"
+                    value={formData.college}
+                    onChange={(e) => setFormData({ ...formData, college: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Instagram Handle</label>
+                  <input
+                    type="text"
+                    placeholder="@sameer_nightlife"
+                    value={formData.instagram}
+                    onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">WhatsApp / Mobile</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="+91 98200 12345"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Payout UPI ID</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="sameer@okhdfcbank"
+                    value={formData.upiId}
+                    onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Bio & Hosting Pitch</label>
+                <textarea
+                  rows="2"
+                  placeholder="Tell club owners what crowd you bring (e.g. 50+ fashion crowd every Saturday)..."
+                  value={formData.bio}
+                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs font-black shadow-lg mt-2"
+              >
+                Publish PR Profile & Join Network →
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    };
+
+    // --- EVENT DETAIL & PR BIDDING MODAL ---
+    const EventDetailModal = ({ event, isOpen, onClose, onBookingSuccess }) => {
+      const { venues, promoters, bookTicket } = useApp();
+      if (!isOpen || !event) return null;
+
+      useEffect(() => {
+        if (isOpen && window.SoundEngine) window.SoundEngine.play('modal');
+      }, [isOpen]);
+
+      const venue = venues.find((v) => v.id === event.venueId) || venues[0];
+      const [selectedBidId, setSelectedBidId] = useState(event.bids[0]?.id || null);
+      const [maleCount, setMaleCount] = useState(1);
+      const [femaleCount, setFemaleCount] = useState(1);
+      const [paymentStep, setPaymentStep] = useState('select');
+      const [paymentMethod, setPaymentMethod] = useState('UPI_GPAY');
+
+      const selectedBid = event.bids.find((b) => b.id === selectedBidId) || event.bids[0];
+      const selectedPR = promoters.find((p) => p.id === selectedBid?.prId) || promoters[0];
+
+      const totalPax = maleCount + femaleCount;
+      const unitPrice = selectedBid ? selectedBid.price : event.basePrice;
+      const subtotal = unitPrice * totalPax;
+      const platformFee = Math.round(subtotal * 0.035) + 40;
+      const totalAmount = subtotal + platformFee;
+
+      const handleCheckout = () => {
+        const options = {
+          key: 'rzp_test_dummy123',
+          amount: totalAmount * 100, // paise
+          currency: 'INR',
+          name: 'NightVibe India',
+          description: `Pass for ${event.title}`,
+          image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100', // simple martini icon representation
+          handler: function (response) {
+            // Callback when payment is successful
+            if (window.SoundEngine) window.SoundEngine.play('success');
+            window.confetti && window.confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
+            
+            const rzpPaymentId = response.razorpay_payment_id || `pay_${Math.random().toString(36).substr(2, 9)}`;
+            
+            const newBooking = bookTicket({
+              event,
+              prBid: selectedBid,
+              groupDetails: { maleCount, femaleCount },
+              paymentMethod: 'RAZORPAY',
+              razorpayPaymentId: rzpPaymentId
+            });
+            onBookingSuccess(newBooking);
+            onClose();
+          },
+          prefill: {
+            name: 'Guest User',
+            email: 'guest@example.com',
+            contact: '9999999999'
+          },
+          theme: {
+            color: '#14b8a6' // teal-500
+          }
+        };
+
+        if (window.Razorpay) {
+          const rzp = new window.Razorpay(options);
+          rzp.on('payment.failed', function (response){
+            alert('Payment failed: ' + response.error.description);
+          });
+          rzp.open();
+        } else {
+          // Fallback if SDK fails to load (e.g. adblocker)
+          alert('Razorpay SDK blocked or failed to load. Simulating success...');
+          window.confetti && window.confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
+          const newBooking = bookTicket({
+            event,
+            prBid: selectedBid,
+            groupDetails: { maleCount, femaleCount },
+            paymentMethod: 'BYPASS_RAZORPAY',
+          });
+          onBookingSuccess(newBooking);
+          onClose();
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto" onClick={onClose}>
+          <div className="relative w-full max-w-3xl rounded-3xl glass-panel my-8 shadow-2xl border border-teal-500/30 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            
+            <div className="relative h-72 sm:h-[400px] w-full overflow-hidden">
+              <img src={event.image} alt={event.title} className="w-full h-full object-cover object-top" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#12141c] via-[#12141c]/60 to-transparent" />
+              
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition"
+              >
+                ✕
+              </button>
+
+              <div className="absolute bottom-4 left-6 right-6 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-teal-500/30 text-teal-300 border border-teal-500/40 mb-1.5 inline-block">
+                    {event.genre}
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-black text-white font-sans">{event.title}</h2>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    📍 {venue.name} ({venue.area}) • ⏰ {event.date}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 uppercase block">Venue Box Office</span>
+                  <span className="text-base font-bold text-slate-400 line-through">₹{event.basePrice}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-6">
+              {paymentStep === 'select' ? (
+                <>
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5 font-sans mb-1">
+                      <span>✨</span>
+                      <span>Authorized Promoter Bids ({event.bids.length} Offers)</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-3">
+                      Promoters compete on price and bundled perks. Choose your preferred PR offer:
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {event.bids.map((bid) => {
+                        const pr = promoters.find((p) => p.id === bid.prId) || promoters[0];
+                        const isSelected = selectedBidId === bid.id;
+                        const savings = event.basePrice - bid.price;
+
+                        return (
+                          <div
+                            key={bid.id}
+                            onClick={() => setSelectedBidId(bid.id)}
+                            className={`p-3.5 rounded-2xl cursor-pointer transition border ${
+                              isSelected
+                                ? 'bg-teal-950/40 border-teal-500 ring-1 ring-teal-500'
+                                : 'bg-white/5 border-white/10 hover:border-white/20'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2">
+                                <img src={pr.avatar} alt={pr.name} className="w-9 h-9 rounded-xl object-cover" />
+                                <div>
+                                  <div className="text-xs font-bold text-white flex items-center gap-1">
+                                    <span>{pr.name}</span>
+                                    <span className="text-cyan-400 text-[10px]">✔</span>
+                                  </div>
+                                  <div className="text-[10px] text-amber-400 font-semibold">
+                                    ⭐ {pr.rating} • {pr.conversions}+ check-ins
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-base font-black text-white">₹{bid.price}</div>
+                                {savings > 0 && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                                    Save ₹{savings}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="space-y-1 pt-1 border-t border-white/5 text-[11px] text-teal-300">
+                              {bid.perks.map((pId) => {
+                                const perkObj = event.approvedPerks?.find((ap) => ap.id === pId);
+                                return (
+                                  <div key={pId} className="flex items-center gap-1">
+                                    <span>🎁</span>
+                                    <span>{perkObj ? perkObj.name : pId}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <p className="text-[10px] text-slate-400 italic mt-1.5">"{bid.notes}"</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Group Size Selector */}
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                      Party Headcount Customization
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/30 border border-white/5">
+                        <span className="text-xs text-slate-200">Stags / Males:</span>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setMaleCount(Math.max(0, maleCount - 1))} className="w-6 h-6 rounded bg-white/10 text-white font-bold">-</button>
+                          <span className="text-xs font-bold text-white w-4 text-center">{maleCount}</span>
+                          <button onClick={() => setMaleCount(maleCount + 1)} className="w-6 h-6 rounded bg-white/10 text-white font-bold">+</button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/30 border border-white/5">
+                        <span className="text-xs text-slate-200">Females / Couple:</span>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setFemaleCount(Math.max(0, femaleCount - 1))} className="w-6 h-6 rounded bg-white/10 text-white font-bold">-</button>
+                          <span className="text-xs font-bold text-white w-4 text-center">{femaleCount}</span>
+                          <button onClick={() => setFemaleCount(femaleCount + 1)} className="w-6 h-6 rounded bg-white/10 text-white font-bold">+</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing Bar */}
+                  <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Total for {totalPax} Guests</span>
+                      <div className="text-xl font-black text-white font-sans">
+                        ₹{totalAmount} <span className="text-[10px] text-slate-400 font-normal">(incl. ₹{platformFee} fee)</span>
+                      </div>
+                    </div>
+                    <button
+                      disabled={totalPax === 0}
+                      onClick={() => setPaymentStep('payment')}
+                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:opacity-90 text-white text-xs font-bold shadow-lg"
+                    >
+                      Proceed to UPI Checkout →
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-5">
+                  <button onClick={() => setPaymentStep('select')} className="text-xs text-teal-400 hover:underline">
+                    ← Back to Bids
+                  </button>
+
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-xs">
+                    <div className="flex justify-between text-slate-300">
+                      <span>{event.title} ({totalPax} Pax × ₹{unitPrice})</span>
+                      <span className="font-semibold text-white">₹{subtotal}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>PR Discount Applied</span>
+                      <span className="text-emerald-400">-₹{(event.basePrice - unitPrice) * totalPax}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>Dynamic 256-Bit Security Pass Fee</span>
+                      <span>₹{platformFee}</span>
+                    </div>
+                    <div className="pt-2 border-t border-white/10 flex justify-between text-sm font-bold text-white">
+                      <span>Total Amount Payable</span>
+                      <span className="text-base gradient-text-cyan">₹{totalAmount}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    {['Google Pay (UPI)', 'PhonePe (UPI)', 'Paytm UPI', 'Cards / NetBanking'].map((m, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setPaymentMethod(m)}
+                        className={`w-full p-4 rounded-xl flex items-center justify-between transition-colors border ${
+                            paymentMethod === m ? 'bg-teal-600/30 border-teal-500 text-white' : 'bg-white/5 border-white/10 text-slate-400'
+                          }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={handleCheckout}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-90 text-black text-xs font-black shadow-xl"
+                  >
+                    ⚡ Pay ₹{totalAmount} & Unlock Dynamic Door Pass
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- DYNAMIC PASSES MODAL (30s ROTATING TOTP QR) ---
+    const MyPassesModal = ({ isOpen, onClose, defaultTicketId }) => {
+      const { bookings, events, venues, promoters } = useApp();
+      const [selectedTicketId, setSelectedTicketId] = useState(defaultTicketId || (bookings[0]?.id || null));
+      const [timeLeft, setTimeLeft] = useState(30);
+      const [totpNonce, setTotpNonce] = useState(Math.floor(Date.now() / 30000));
+      const qrCanvasRef = useRef(null);
+
+      const selectedBooking = bookings.find((b) => b.id === selectedTicketId) || bookings[0];
+      const event = selectedBooking ? events.find((e) => e.id === selectedBooking.eventId) : null;
+      const venue = selectedBooking ? venues.find((v) => v.id === selectedBooking.venueId) : null;
+      const pr = selectedBooking ? promoters.find((p) => p.id === selectedBooking.prId) : null;
+
+      useEffect(() => {
+        if (!isOpen) return;
+        const interval = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              setTotpNonce(Math.floor(Date.now() / 30000));
+              return 30;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        return () => clearInterval(interval);
+      }, [isOpen]);
+
+      useEffect(() => {
+        if (!selectedBooking || !qrCanvasRef.current || !window.QRCode) return;
+        const payload = JSON.stringify({
+          tkt: selectedBooking.id,
+          totp: totpNonce,
+          pax: selectedBooking.pax,
+          m: selectedBooking.maleCount,
+          f: selectedBooking.femaleCount,
+          sec: `${selectedBooking.qrToken}-${totpNonce}`,
+        });
+        window.QRCode.toCanvas(qrCanvasRef.current, payload, { width: 190, margin: 1 });
+      }, [selectedBooking, totpNonce]);
+
+      if (!isOpen) return null;
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-xl rounded-3xl glass-panel my-8 shadow-2xl border border-teal-500/30 overflow-hidden">
+            
+            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🎟️</span>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Dynamic Entrance Pass</h3>
+                  <p className="text-[10px] text-slate-400">256-Bit Rotating Security Token • Anti-Screenshot Active</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400">✕</button>
+            </div>
+
+            {bookings.length > 1 && (
+              <div className="flex items-center gap-2 p-2.5 bg-black/40 overflow-x-auto border-b border-white/5">
+                {bookings.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => setSelectedTicketId(b.id)}
+                    className={`whitespace-nowrap shrink-0 p-2.5 px-4 rounded-xl border border-white/10 flex items-center justify-center transition ${
+                                selectedTicketId === b.id ? 'bg-teal-600 text-white' : 'bg-white/5 text-slate-400'
+                              }`}
+                  >
+                    {b.id} ({b.status})
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {selectedBooking ? (
+              <div className="p-5 space-y-4">
+                <div className="rounded-3xl bg-gradient-to-b from-[#181a26] to-[#0f111a] border border-teal-500/40 p-5 shadow-2xl">
+                  
+                  <div className="flex items-center justify-between pb-3 border-b border-dashed border-white/15">
+                    <div>
+                      <h4 className="text-base font-black text-white">{venue?.name}</h4>
+                      <p className="text-xs text-teal-300">{event?.title}</p>
+                    </div>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      selectedBooking.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-cyan-500/20 text-cyan-300'
+                    }`}>
+                      {selectedBooking.status === 'ACTIVE' ? 'READY FOR SCAN' : selectedBooking.status}
+                    </span>
+                  </div>
+
+                  {/* QR View */}
+                  <div className="py-4 flex flex-col items-center justify-center">
+                    <div className="relative p-2.5 rounded-2xl bg-white shadow-xl">
+                      <canvas ref={qrCanvasRef} />
+                      <div className="radar-line" />
+                    </div>
+
+                    <div className="mt-3 flex items-center gap-2 text-xs text-teal-300 font-semibold">
+                      <span>Show QR Token at Entry:</span>
+                      <span className="font-mono px-2 py-0.5 rounded bg-teal-500/20 text-white font-bold">
+                        00:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-dashed border-white/15 grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Party Headcount:</span>
+                      <span className="font-bold text-white">{selectedBooking.maleCount}M + {selectedBooking.femaleCount}F ({selectedBooking.pax} Pax)</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">PR Host:</span>
+                      <span className="font-bold text-purple-300">{pr?.name}</span>
+                    </div>
+                  </div>
+
+                  {selectedBooking.perks?.length > 0 && (
+                    <div className="mt-2.5 pt-2 border-t border-white/5 space-y-1 text-[11px] text-pink-300">
+                      {selectedBooking.perks.map((p, i) => (
+                        <div key={i}>🎁 {p}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[10px] text-slate-400 text-center">
+                  Show this screen directly to the club entrance door scanner. Screenshotting is disabled to prevent duplicate entry.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      );
+    };
+
+    // --- HERO CAROUSEL COMPONENT ---
+    const HeroCarousel = ({ events, venues, onSelect }) => {
+      const [idx, setIdx] = useState(0);
+      const [key, setKey] = useState(0);
+      const featured = events.slice(0, 4);
+
+      useEffect(() => {
+        const t = setInterval(() => {
+          setIdx(prev => (prev + 1) % featured.length);
+          setKey(k => k + 1);
+        }, 4200);
+        return () => clearInterval(t);
+      }, [featured.length]);
+
+      const go = (i) => { setIdx(i); setKey(k => k + 1); };
+
+      if (!featured.length) return null;
+      const evt = featured[idx];
+      const venue = venues.find(v => v.id === evt.venueId);
+      const lowestBid = evt.bids.length > 0 ? Math.min(...evt.bids.map(b => b.price)) : evt.basePrice;
+      const savings = evt.basePrice - lowestBid;
+
+      return (
+        <div className="relative rounded-3xl overflow-hidden shadow-2xl cursor-pointer" style={{minHeight: '340px'}} onClick={() => onSelect(evt)}>
+          {/* Background image */}
+          <div key={key} className="carousel-slide absolute inset-0">
+            <img src={evt.image} alt={evt.title} className="w-full h-full object-cover object-top" />
+            <div className="absolute inset-0" style={{background: 'linear-gradient(to top, #06080e 0%, rgba(6,8,14,0.7) 40%, rgba(6,8,14,0.15) 100%)'}} />
+            {/* Subtle radial glow */}
+            <div className="absolute inset-0" style={{background: 'radial-gradient(ellipse at 30% 60%, rgba(20,184,166,0.15) 0%, transparent 65%)'}} />
+          </div>
+
+          {/* Top badges */}
+          <div className="absolute top-5 left-5 right-5 flex items-start justify-between z-10">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full badge-pulse" style={{background: 'rgba(239,68,68,0.9)', color: 'white'}}>
+                🔴 LIVE TONIGHT
+              </span>
+              <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-black/60 text-teal-300 backdrop-blur">
+                {evt.genre}
+              </span>
+            </div>
+            {savings > 0 && (
+              <span className="text-xs font-black px-3 py-1 rounded-full bg-emerald-500 text-black shadow-lg">
+                Save ₹{savings} via PR
+              </span>
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8 z-10">
+            <p className="text-xs text-teal-300 font-semibold mb-1">📍 {venue?.name} · {venue?.area?.split(',')[0]}</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight mb-1">{evt.title}</h2>
+            <p className="text-xs text-slate-300 mb-4">⏰ {evt.date} · {evt.time}</p>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                onClick={() => onSelect(evt)}
+                className="px-6 py-2.5 rounded-xl text-xs font-black text-white btn-glow transition-all"
+                style={{background: 'linear-gradient(135deg, #0d9488, #10b981)'}}
+              >
+                Compare {evt.bids.length} PR Bids — from ₹{lowestBid} →
+              </button>
+              <div className="text-xs text-slate-300 bg-black/50 backdrop-blur px-3 py-2 rounded-xl">
+                <span className="text-slate-400">Box Office: </span>
+                <span className="line-through text-slate-500">₹{evt.basePrice}</span>
+              </div>
+            </div>
+
+            {/* Dot indicators */}
+            <div className="flex items-center gap-1.5 mt-4">
+              {featured.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => go(i)}
+                  className={`rounded-full transition-all ${
+                    i === idx ? 'w-5 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/30 hover:bg-white/50'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- LIVE COUNTDOWN HOOK ---
+    const useLiveCountdown = (targetLabel) => {
+      // Generate a pseudo-countdown based on event label
+      const getSecondsLeft = () => {
+        const now = new Date();
+        if (targetLabel.toLowerCase().includes('tonight') || targetLabel.toLowerCase().includes('saturday')) {
+          const target = new Date();
+          target.setHours(22, 0, 0, 0);
+          if (target < now) target.setDate(target.getDate() + 1);
+          return Math.max(0, Math.floor((target - now) / 1000));
+        }
+        if (targetLabel.toLowerCase().includes('tomorrow') || targetLabel.toLowerCase().includes('friday')) {
+          const target = new Date();
+          target.setDate(target.getDate() + 1);
+          target.setHours(21, 30, 0, 0);
+          return Math.max(0, Math.floor((target - now) / 1000));
+        }
+        // Sunday / Sundowner
+        const target = new Date();
+        target.setDate(target.getDate() + 2);
+        target.setHours(16, 30, 0, 0);
+        return Math.max(0, Math.floor((target - now) / 1000));
+      };
+
+      const [secs, setSecs] = useState(getSecondsLeft);
+      useEffect(() => {
+        const t = setInterval(() => setSecs(getSecondsLeft()), 1000);
+        return () => clearInterval(t);
+      }, []);
+
+      const h = String(Math.floor(secs / 3600)).padStart(2, '0');
+      const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
+      const s = String(secs % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    };
+
+    // --- EVENT COUNTDOWN BADGE ---
+    const CountdownBadge = ({ dateLabel }) => {
+      const time = useLiveCountdown(dateLabel);
+      const isUrgent = time < '01:00:00';
+      return (
+        <span className={`countdown-font text-[10px] font-black px-2 py-0.5 rounded-lg ${
+          isUrgent
+            ? 'bg-red-500/20 text-red-300 border border-red-500/40 badge-pulse'
+            : 'bg-black/70 text-cyan-300 backdrop-blur'
+        }`}>
+          ⏱ {time}
+        </span>
+      );
+    };
+
+    // --- OCCUPANCY BAR ---
+    const OccupancyBar = ({ current, capacity }) => {
+      const pct = Math.min(100, Math.round((current / capacity) * 100));
+      const color = pct > 80 ? '#ef4444' : pct > 55 ? '#f59e0b' : '#10b981';
+      const label = pct > 80 ? '🔴 Nearly Full' : pct > 55 ? '🟡 Filling Up' : '🟢 Space Available';
+      return (
+        <div className="space-y-0.5">
+          <div className="flex justify-between text-[9px] text-slate-400">
+            <span>{label}</span>
+            <span className="font-bold" style={{color}}>{pct}% Full</span>
+          </div>
+          <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full rounded-full occ-bar-fill"
+              style={{width: `${pct}%`, background: color}}
+            />
+          </div>
+        </div>
+      );
+    };
+
+    // --- HORIZONTAL SCROLL ROW ---
+    const HScrollRow = ({ title, icon, events, venues, onSelect }) => {
+      if (!events.length) return null;
+      return (
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-base">{icon}</span>
+            <h3 className="text-sm font-black text-white">{title}</h3>
+            <span className="text-[10px] text-slate-400 ml-auto">swipe →</span>
+          </div>
+          <div className="h-scroll-row">
+            {events.map((evt, idx) => {
+              const venue = venues.find(v => v.id === evt.venueId);
+              const lowestBid = evt.bids.length > 0 ? Math.min(...evt.bids.map(b => b.price)) : evt.basePrice;
+              const staggerClass = `stagger-${(idx % 3) + 1}`;
+              return (
+                <div
+                  key={evt.id}
+                  onClick={() => onSelect(evt)}
+                  className={`h-scroll-card cursor-pointer active:scale-[0.98] rounded-2xl overflow-hidden border border-white/10 glass-panel card-shimmer flex-shrink-0 hover:border-purple-500/50 transition-all animate-fade-in ${staggerClass}`}
+                  style={{width: '220px'}}
+                >
+                  <div className="relative aspect-[4/5] w-full overflow-hidden">
+                    <img src={evt.image} alt={evt.title} className="w-full h-full object-cover object-top" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                    <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end">
+                      <CountdownBadge dateLabel={evt.date} />
+                      <span className="text-[9px] font-bold text-black bg-emerald-400 px-1.5 py-0.5 rounded-md">from ₹{lowestBid}</span>
+                    </div>
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-[10px] text-pink-400 font-semibold truncate">📍 {venue?.name}</p>
+                    <p className="text-xs font-bold text-white line-clamp-1 mt-0.5">{evt.title}</p>
+                    <p className="text-[9px] text-slate-400 mt-1">{evt.bids.length} PR bids</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+
+    // --- GUEST VIEW COMPONENT (FULL REWRITE) ---
+    const GuestView = ({ onOpenPassWithTicketId }) => {
+      const { activeCity, selectedGenre, setSelectedGenre, searchQuery, events, venues, promoters } = useApp();
+      const [selectedEvent, setSelectedEvent] = useState(null);
+
+      const filteredEvents = events.filter((evt) => {
+        const venue = venues.find((v) => v.id === evt.venueId);
+        const cityMatch = venue?.city === activeCity;
+        const genreMatch = selectedGenre === 'All Vibes' || evt.genre === selectedGenre;
+        const searchMatch = searchQuery.trim() === '' || evt.title.toLowerCase().includes(searchQuery.toLowerCase());
+        return cityMatch && genreMatch && searchMatch;
+      });
+
+      const cityName = CITIES.find((c) => c.id === activeCity)?.name || 'Mumbai';
+
+      // Horizontal row groupings
+      const featured = filteredEvents.filter(e => {
+        const v = venues.find(v => v.id === e.venueId);
+        const isSellingFast = v && (v.currentOccupancy / v.licensedCapacity) > 0.55;
+        const isTrending = e.bids.length >= 2;
+        return isSellingFast || isTrending;
+      });
+
+      return (
+        <div className="space-y-8">
+
+          {/* 1. HERO CAROUSEL */}
+          {filteredEvents.length > 0 && (
+            <HeroCarousel
+              events={filteredEvents}
+              venues={venues}
+              onSelect={setSelectedEvent}
+            />
+          )}
+
+          {/* 2. HORIZONTAL SCROLL: Featured */}
+          {featured.length > 0 && (
+            <HScrollRow
+              title="Trending & Filling Fast"
+              icon="🔥"
+              events={featured}
+              venues={venues}
+              onSelect={setSelectedEvent}
+            />
+          )}
+
+          {/* 4. GENRE FILTER */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-300 uppercase tracking-wider">Filter by Music Vibe</span>
+              <span className="text-slate-500">{filteredEvents.length} Events in {cityName}</span>
+            </div>
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              {GENRES.map((g) => (
+                <button
+                  key={g}
+                  onClick={() => setSelectedGenre(g)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+                    selectedGenre === g
+                      ? 'text-white shadow-md'
+                      : 'bg-white/5 text-slate-400 hover:text-white'
+                  }`}
+                  style={selectedGenre === g ? {background: 'linear-gradient(135deg, #0d9488, #10b981)'} : {}}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 5. MAIN EVENT GRID — with countdown + occupancy bars */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredEvents.map((evt, idx) => {
+              const venue = venues.find((v) => v.id === evt.venueId);
+              const lowestBid = evt.bids.length > 0 ? Math.min(...evt.bids.map((b) => b.price)) : evt.basePrice;
+              const savings = evt.basePrice - lowestBid;
+              const staggerClass = `stagger-${(idx % 3) + 1}`;
+
+              return (
+                <div
+                  key={evt.id}
+                  onClick={() => setSelectedEvent(evt)}
+                  className={`rounded-3xl glass-panel card-shimmer overflow-hidden border border-white/[0.06] flex flex-col justify-between hover:border-teal-500/30 transition-all duration-300 animate-fade-in cursor-pointer active:scale-[0.98] ${staggerClass}`}
+                  style={{'--tw-shadow': '0 10px 30px rgba(20,184,166,0.1)'}}
+                >
+                  {/* Image */}
+                  <div className="relative aspect-[4/5] w-full overflow-hidden">
+                    <img src={evt.image} alt={evt.title} className="w-full h-full object-cover object-top transition-transform duration-700 hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c0f18] via-transparent to-black/30" />
+
+                    {/* Top badges row */}
+                    <div className="absolute top-3 left-3 right-3 flex justify-between items-start">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/60 backdrop-blur text-teal-300">
+                        {evt.genre}
+                      </span>
+                      {savings > 0 && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-black">
+                          Save ₹{savings}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Bottom: date + countdown */}
+                    <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+                      <span className="text-[10px] text-white bg-black/70 px-2 py-0.5 rounded-lg backdrop-blur">
+                        ⏰ {evt.date}
+                      </span>
+                      <CountdownBadge dateLabel={evt.date} />
+                    </div>
+                  </div>
+
+                  {/* Card body */}
+                  <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                    <div>
+                      <p className="text-[11px] text-teal-400 font-semibold mb-0.5">📍 {venue?.name} ({venue?.area?.split(',')[0]})</p>
+                      <h3 className="text-sm font-bold text-white line-clamp-1">{evt.title}</h3>
+                      <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">{evt.description}</p>
+                    </div>
+
+                    {/* Occupancy bar */}
+                    {venue && (
+                      <OccupancyBar current={venue.currentOccupancy} capacity={venue.licensedCapacity} />
+                    )}
+
+                    {/* Price + CTA */}
+                    <div className="pt-2 border-t border-white/10 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">{evt.bids.length} PR Bids available</span>
+                        <div className="text-right">
+                          <span className="text-slate-500 line-through text-[10px]">₹{evt.basePrice}</span>
+                          <span className="countdown-font text-sm font-black text-white ml-1">from ₹{lowestBid}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setSelectedEvent(evt)}
+                        className="w-full py-2 rounded-xl text-white text-xs font-bold btn-glow transition-all"
+                        style={{background: 'linear-gradient(135deg, #0d9488, #10b981)'}}
+                      >
+                        Compare PR Bids & Book Pass →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Event detail modal */}
+          {selectedEvent && (
+            <EventDetailModal
+              event={selectedEvent}
+              isOpen={true}
+              onClose={() => setSelectedEvent(null)}
+              onBookingSuccess={(booking) => {
+                setSelectedEvent(null);
+                onOpenPassWithTicketId(booking.id);
+              }}
+            />
+          )}
+        </div>
+      );
+    };
+
+    // --- CLUB OWNER & GATE SCANNER VIEW COMPONENT ---
+    const OwnerView = ({ onOpenPRNetwork }) => {
+      const { venues, events, promoters, bookings, transactions, activeOwnerVenueId, setActiveOwnerVenueId, scanTicket } = useApp();
+      const venue = venues.find((v) => v.id === activeOwnerVenueId) || venues[0];
+      const venueBookings = bookings.filter((b) => b.venueId === venue.id);
+
+      const [activeTab, setActiveTab] = useState('scanner');
+      const [scannedTicketId, setScannedTicketId] = useState('');
+      const [scannedResult, setScannedResult] = useState(null);
+      const [cameraActive, setCameraActive] = useState(false);
+
+      const handleInspect = (tktId) => {
+        const target = tktId || scannedTicketId.trim();
+        const found = bookings.find((b) => b.id === target || b.qrToken === target || target.includes(b.id));
+        if (found) {
+          setScannedResult(found);
+          setScannedTicketId(found.id);
+        } else {
+          setScannedResult(null);
+        }
+      };
+
+      const handleAdmit = () => {
+        if (!scannedResult) return;
+        scanTicket(scannedResult.id, 'ADMIT');
+        setScannedResult({ ...scannedResult, status: 'CHECKED_IN' });
+      };
+
+      const handleReject = () => {
+        if (!scannedResult) return;
+        scanTicket(scannedResult.id, 'REJECT', 'Dress code / Stag violation');
+        setScannedResult({ ...scannedResult, status: 'REJECTED' });
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="p-5 rounded-3xl glass-panel border border-amber-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center text-2xl">
+                {venue.logo}
+              </div>
+              <div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                  Club Owner & Door Console
+                </span>
+                <h2 className="text-xl font-black text-white">{venue.name}</h2>
+                <p className="text-xs text-slate-400">📍 {venue.area} • Manager: {venue.ownerName}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onOpenPRNetwork}
+                className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-bold flex items-center gap-1"
+              >
+                <span>💼</span>
+                <span>Scout PRs (Free)</span>
+              </button>
+
+              <select
+                value={activeOwnerVenueId}
+                onChange={(e) => {
+                  setActiveOwnerVenueId(e.target.value);
+                  setScannedResult(null);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white"
+              >
+                {venues.map((v) => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className="flex items-center gap-2 p-1 rounded-2xl bg-black/40 border border-white/10 w-fit">
+            <button
+              onClick={() => setActiveTab('scanner')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${
+                activeTab === 'scanner' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white' : 'text-slate-400'
+              }`}
+            >
+              📷 In-App Door Scanner
+            </button>
+            <button
+              onClick={() => setActiveTab('leaderboard')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${
+                activeTab === 'leaderboard' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white' : 'text-slate-400'
+              }`}
+            >
+              📊 PR Footfall & Attribution
+            </button>
+            <button
+              onClick={() => setActiveTab('ledger')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${
+                activeTab === 'ledger' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white' : 'text-slate-400'
+              }`}
+            >
+              💳 Settlement Ledger
+            </button>
+          </div>
+
+          {/* Scanner Tab */}
+          {activeTab === 'scanner' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              <div className="lg:col-span-5 p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
+                <h3 className="text-sm font-bold text-white flex items-center justify-between">
+                  <span>Entrance Camera Scanner</span>
+                  <span className="text-[10px] text-emerald-400 font-semibold">● ACTIVE</span>
+                </h3>
+
+                <div className="aspect-square rounded-2xl bg-black/80 border-2 border-dashed border-purple-500/40 flex flex-col items-center justify-center p-4 text-center relative overflow-hidden">
+                  {cameraActive ? (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="radar-line" />
+                      <span className="text-xs text-cyan-300 font-semibold animate-pulse">Scanning QR Viewport...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="text-3xl">📷</div>
+                      <p className="text-xs text-slate-300">Point mobile/laptop camera at Guest Dynamic Pass</p>
+                      <button
+                        onClick={() => setCameraActive(true)}
+                        className="px-3.5 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                      >
+                        Start Camera Stream
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-1.5 pt-2">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Quick-Scan Active Passes:</span>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {venueBookings.map((b) => (
+                      <button
+                        key={b.id}
+                        onClick={() => handleInspect(b.id)}
+                        className={`w-full p-2 rounded-xl text-left text-xs border flex items-center justify-between ${
+                          scannedTicketId === b.id ? 'bg-amber-500/20 border-amber-500 text-white' : 'bg-white/5 border-white/10 text-slate-300'
+                        }`}
+                      >
+                        <span>{b.id} - {b.guestName} ({b.pax} Pax)</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/10">{b.status}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-7 p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
+                {scannedResult ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase text-slate-400">Pass Decoded ({scannedResult.id})</span>
+                        <h3 className="text-lg font-black text-white">{scannedResult.guestName}</h3>
+                        <p className="text-xs text-slate-400">{scannedResult.guestPhone}</p>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                        scannedResult.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-cyan-500/20 text-cyan-300'
+                      }`}>
+                        {scannedResult.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                        <span className="text-[10px] text-slate-400 block">Total Pax</span>
+                        <span className="text-lg font-black text-white">{scannedResult.pax}</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                        <span className="text-[10px] text-slate-400 block">Males / Stags</span>
+                        <span className="text-lg font-black text-amber-400">{scannedResult.maleCount}</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-black/40 border border-white/5">
+                        <span className="text-[10px] text-slate-400 block">Females</span>
+                        <span className="text-lg font-black text-pink-400">{scannedResult.femaleCount}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white/5 text-xs space-y-1">
+                      <div className="text-slate-400">Promoter: <span className="text-white font-bold">{promoters.find((p) => p.id === scannedResult.prId)?.name}</span></div>
+                      <div className="text-[10px] text-slate-400">Perks: {scannedResult.perks?.join(', ')}</div>
+                    </div>
+
+                    {scannedResult.status === 'ACTIVE' ? (
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <button
+                          onClick={handleReject}
+                          className="py-3 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/30 hover:bg-rose-500/30 transition"
+                        >
+                          🚫 Deny Entry
+                        </button>
+                        <button
+                          onClick={handleAdmit}
+                          className="py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-black text-xs font-black shadow-lg hover:opacity-90 transition"
+                        >
+                          ✅ Grant Entry & Settle
+                        </button>
+                      </div>
+                    ) : scannedResult.status === 'CHECKED_IN' ? (
+                      <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+                        ✅ Admitted at {scannedResult.scannedAt} · {scannedResult.scannedBy}
+                      </div>
+                    ) : (
+                      <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+                        🚫 Rejected · Refund processed to guest
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-10 text-center text-slate-400 text-xs space-y-2">
+                    <span className="text-3xl block">🎟️</span>
+                    <p>Select or scan a pass to inspect door details.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Leaderboard Tab */}
+          {activeTab === 'leaderboard' && (
+            <div className="p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white">Live PR Footfall & Attribution Tonight</h3>
+                <button onClick={onOpenPRNetwork} className="text-xs text-cyan-400 hover:underline">
+                  Browse All PRs in Talent Directory →
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-white/10 text-slate-400 uppercase text-[10px]">
+                      <th className="pb-2">PR Promoter</th>
+                      <th className="pb-2">Niche</th>
+                      <th className="pb-2">Admitted Pax</th>
+                      <th className="pb-2">Gross GMV</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {promoters.filter((p) => p.authorizedVenues.includes(venue.id)).map((pr) => {
+                      const prBk = venueBookings.filter((b) => b.prId === pr.id);
+                      const adm = prBk.filter((b) => b.status === 'CHECKED_IN').reduce((a, b) => a + b.pax, 0);
+                      const gmv = prBk.reduce((a, b) => a + b.totalPaid, 0);
+                      return (
+                        <tr key={pr.id} className="hover:bg-white/5">
+                          <td className="py-2.5 font-bold text-white">{pr.name} ({pr.handle})</td>
+                          <td className="py-2.5 text-cyan-300">{pr.niche}</td>
+                          <td className="py-2.5 text-emerald-400 font-bold">{adm} pax</td>
+                          <td className="py-2.5 text-purple-300 font-semibold">₹{gmv}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Ledger Tab */}
+          {activeTab === 'ledger' && (
+            <div className="p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
+              <h3 className="text-sm font-bold text-white">Direct Split Settlement Ledger (T+1 Payouts)</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-white/10 text-slate-400 uppercase text-[10px]">
+                      <th className="pb-2">Txn ID</th>
+                      <th className="pb-2">Event</th>
+                      <th className="pb-2">PR Credited</th>
+                      <th className="pb-2">Venue Share</th>
+                      <th className="pb-2">PR Commission</th>
+                      <th className="pb-2">2% TDS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {transactions.map((t) => (
+                      <tr key={t.id} className="hover:bg-white/5">
+                        <td className="py-2.5 font-mono text-purple-300">{t.id}</td>
+                        <td className="py-2.5 text-white">{t.eventTitle}</td>
+                        <td className="py-2.5 text-slate-300">{t.prName}</td>
+                        <td className="py-2.5 text-emerald-400 font-bold">₹{t.venueShare}</td>
+                        <td className="py-2.5 text-pink-400">₹{t.prCommission}</td>
+                        <td className="py-2.5 text-slate-400">₹{t.tdsDeducted}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // --- PROMOTER (PR) PRO VIEW COMPONENT ---
+    const PromoterView = ({ onOpenCreatePR }) => {
+      const { promoters, activePrId, setActivePrId, events, venues, bookings, submitPRBid, showToast } = useApp();
+      const pr = promoters.find((p) => p.id === activePrId) || promoters[0];
+      const authorizedEvents = events.filter((e) => pr.authorizedVenues.includes(e.venueId));
+
+      const [selectedEventId, setSelectedEventId] = useState(authorizedEvents[0]?.id || events[0]?.id);
+      const selectedEvent = events.find((e) => e.id === selectedEventId) || events[0];
+      const currentBid = selectedEvent?.bids?.find((b) => b.prId === pr.id);
+
+      const [bidPrice, setBidPrice] = useState(currentBid?.price || selectedEvent?.floorPrice || 1600);
+      const [selectedPerks, setSelectedPerks] = useState(currentBid?.perks || ['perk_shooter', 'perk_fasttrack']);
+      const [bidNotes, setBidNotes] = useState(currentBid?.notes || 'Exclusive fast-track entry + free shooter on arrival.');
+
+      const prBookings = bookings.filter((b) => b.prId === pr.id);
+      const scannedBookings = prBookings.filter((b) => b.status === 'CHECKED_IN');
+      const unlockedEarnings = scannedBookings.reduce((acc, b) => acc + (b.prCommission - Math.round(b.prCommission * 0.02)), 0);
+
+      const discountGiven = selectedEvent ? Math.max(0, selectedEvent.basePrice - bidPrice) : 0;
+      const estimatedGrossCommission = Math.max(150, discountGiven + 120);
+      const estimatedTds = Math.round(estimatedGrossCommission * 0.02);
+      const estimatedNetPayout = estimatedGrossCommission - estimatedTds;
+
+      const handleSaveBid = (e) => {
+        e.preventDefault();
+        submitPRBid(selectedEvent.id, pr.id, bidPrice, selectedPerks, bidNotes);
+      };
+
+      const handleWithdraw = () => {
+        if (unlockedEarnings <= 0) return;
+        window.confetti && window.confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+        showToast(`⚡ ₹${unlockedEarnings} routed instantly to ${pr.upiId} via UPI Payout!`, 'success');
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* PR Profile Header */}
+          <div className="p-5 rounded-3xl glass-panel border border-cyan-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <img src={pr.avatar} alt={pr.name} className="w-14 h-14 rounded-2xl object-cover ring-2 ring-cyan-500/50" />
+              <div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">
+                  {pr.tier} PR • ⭐ {pr.rating}
+                </span>
+                <h2 className="text-xl font-black text-white">{pr.name} <span className="text-xs text-slate-400">({pr.handle})</span></h2>
+                <p className="text-xs text-slate-400">Specialization: <span className="text-cyan-300 font-semibold">{pr.niche}</span> • {pr.college}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onOpenCreatePR}
+                className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-bold"
+              >
+                Edit My PR Profile
+              </button>
+
+              <select
+                value={activePrId}
+                onChange={(e) => setActivePrId(e.target.value)}
+                className="px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white"
+              >
+                {promoters.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Wallet & Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 rounded-2xl glass-panel border border-cyan-500/30 space-y-1.5">
+              <span className="text-xs text-cyan-300 font-semibold block">Unlocked PR Wallet</span>
+              <div className="text-2xl font-black text-white">₹{unlockedEarnings}</div>
+              <button
+                onClick={handleWithdraw}
+                disabled={unlockedEarnings <= 0}
+                className="w-full py-1 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 text-black text-xs font-bold transition"
+              >
+                Instant UPI Withdrawal
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl glass-panel border border-white/10 space-y-1">
+              <span className="text-xs text-slate-400 block">Verified Admissions</span>
+              <div className="text-2xl font-black text-emerald-400">
+                {scannedBookings.reduce((a, b) => a + b.pax, 0)} Pax
+              </div>
+              <p className="text-[10px] text-slate-400">{scannedBookings.length} confirmed door entries</p>
+            </div>
+
+            <div className="p-4 rounded-2xl glass-panel border border-white/10 space-y-1">
+              <span className="text-xs text-slate-400 block">PR Trust Score</span>
+              <div className="text-2xl font-black text-purple-300">{pr.showUpRate}%</div>
+              <p className="text-[10px] text-emerald-400">⭐ {pr.rating} (Zero Disputes)</p>
+            </div>
+          </div>
+
+          {/* Dynamic Bidding Console */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-7 p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
+              <h3 className="text-sm font-bold text-white">Dynamic Bidding Engine</h3>
+              
+              <div className="space-y-1.5">
+                <label className="block text-xs text-slate-300 font-semibold">Select Campaign</label>
+                <select
+                  value={selectedEventId}
+                  onChange={(e) => setSelectedEventId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white"
+                >
+                  {authorizedEvents.map((evt) => (
+                    <option key={evt.id} value={evt.id}>{evt.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedEvent && (
+                <div className="space-y-3 p-3.5 rounded-2xl bg-black/30 border border-white/5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-300">Your Offer Price:</span>
+                    <span className="text-lg font-black text-cyan-300">₹{bidPrice}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={selectedEvent.floorPrice}
+                    max={selectedEvent.basePrice}
+                    step={50}
+                    value={bidPrice}
+                    onChange={(e) => setBidPrice(Number(e.target.value))}
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500">
+                    <span>Floor: ₹{selectedEvent.floorPrice}</span>
+                    <span>Official: ₹{selectedEvent.basePrice}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="block text-xs text-slate-300 font-semibold">Pitch Note</label>
+                <input
+                  type="text"
+                  value={bidNotes}
+                  onChange={(e) => setBidNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white"
+                />
+              </div>
+
+              <button
+                onClick={handleSaveBid}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-xs font-black shadow-lg"
+              >
+                Publish Dynamic Bid Offer
+              </button>
+            </div>
+
+            <div className="lg:col-span-5 p-5 rounded-3xl glass-panel border border-cyan-500/30 space-y-3">
+              <h3 className="text-sm font-bold text-white">Live Commission Yield Breakdown</h3>
+              <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 space-y-2 text-xs">
+                <div className="flex justify-between text-slate-400">
+                  <span>Guest Discount:</span>
+                  <span className="text-white">₹{discountGiven}</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Gross Commission:</span>
+                  <span className="text-cyan-300 font-bold">₹{estimatedGrossCommission}</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>2% Section 194H TDS:</span>
+                  <span className="text-rose-400">-₹{estimatedTds}</span>
+                </div>
+                <div className="pt-2 border-t border-white/10 flex justify-between text-sm font-bold text-white">
+                  <span>Net Payout / Pax:</span>
+                  <span className="text-emerald-400">₹{estimatedNetPayout}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- MAIN ROOT APPLICATION ---
+    const App = () => {
+      const { role, activeView, setActiveView, toast } = useApp();
+      const [passesOpen, setPassesOpen] = useState(false);
+      const [createPROpen, setCreatePROpen] = useState(false);
+      const [selectedTkt, setSelectedTkt] = useState(null);
+
+      useEffect(() => {
+        const handleInteraction = () => {
+          if (window.SoundEngine) window.SoundEngine.init();
+          document.removeEventListener('click', handleInteraction);
+        };
+        document.addEventListener('click', handleInteraction);
+        
+        const handleGlobalClick = (e) => {
+          if (e.target.closest('button') || e.target.closest('.cursor-pointer')) {
+            if (window.SoundEngine) window.SoundEngine.play('click');
+          }
+        };
+        document.addEventListener('click', handleGlobalClick);
+
+        return () => {
+          document.removeEventListener('click', handleInteraction);
+          document.removeEventListener('click', handleGlobalClick);
+        };
+      }, []);
+
+      return (
+        <div className="min-h-screen flex flex-col bg-[#090a0f] text-slate-100 font-sans">
+          <Header
+            onOpenPasses={() => {
+              setSelectedTkt(null);
+              setPassesOpen(true);
+            }}
+            onOpenCreatePR={() => setCreatePROpen(true)}
+            onOpenAuth={() => alert('Current Active User: Arjun Kapoor')}
+          />
+
+          <main className="flex-1 w-full">
+            {/* Hero breaks out full-bleed; rest gets constrained */}
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8">
+            {activeView === 'pr_network' ? (
+              <PRTalentNetworkView onOpenCreatePR={() => setCreatePROpen(true)} />
+            ) : (
+              <>
+                {role === 'guest' && <GuestView onOpenPassWithTicketId={(id) => { setSelectedTkt(id); setPassesOpen(true); }} />}
+                {role === 'owner' && <OwnerView onOpenPRNetwork={() => setActiveView('pr_network')} />}
+                {role === 'pr' && <PromoterView onOpenCreatePR={() => setCreatePROpen(true)} />}
+              </>
+            )}
+            </div>
+          </main>
+
+          {/* Mobile Bottom Navigation Bar (iOS / Android App Shell) */}
+          <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0c0e15]/95 backdrop-blur-xl border-t border-white/10 flex items-center justify-around py-2.5 md:hidden">
+            <button
+              onClick={() => setActiveView('events')}
+              className={`flex flex-col items-center gap-0.5 text-[10px] font-semibold ${
+                activeView === 'events' ? 'text-purple-400' : 'text-slate-400'
+              }`}
+            >
+              <span className="text-base">🎉</span>
+              <span>Events</span>
+            </button>
+
+            <button
+              onClick={() => setActiveView('pr_network')}
+              className={`flex flex-col items-center gap-0.5 text-[10px] font-semibold ${
+                activeView === 'pr_network' ? 'text-cyan-400' : 'text-slate-400'
+              }`}
+            >
+              <span className="text-base">💼</span>
+              <span>PR Network</span>
+            </button>
+
+            <button
+              onClick={() => setPassesOpen(true)}
+              className="flex flex-col items-center gap-0.5 text-[10px] font-semibold text-slate-400"
+            >
+              <span className="text-base">🎟️</span>
+              <span>Passes</span>
+            </button>
+
+            <button
+              onClick={() => setCreatePROpen(true)}
+              className="flex flex-col items-center gap-0.5 text-[10px] font-semibold text-pink-400"
+            >
+              <span className="text-base">✨</span>
+              <span>Join PR</span>
+            </button>
+          </nav>
+
+          <footer className="border-t border-white/10 bg-[#07080c] py-8 text-center text-xs text-slate-500 mb-12 md:mb-0">
+            <p>© 2026 NightVibe India Technologies Pvt. Ltd. • Dynamic PR Bidding, Gate Pass & Talent Network</p>
+          </footer>
+
+          <MyPassesModal isOpen={passesOpen} onClose={() => setPassesOpen(false)} defaultTicketId={selectedTkt} />
+          <CreatePRProfileModal isOpen={createPROpen} onClose={() => setCreatePROpen(false)} />
+
+          {toast && (
+            <div className="fixed bottom-20 md:bottom-6 right-6 z-50 p-3.5 rounded-2xl bg-emerald-950/90 border border-emerald-500 text-emerald-200 text-xs font-semibold shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-5">
+              {toast.message}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(
+      <AppProvider>
+        <App />
+      </AppProvider>
+    );
+  </script>
+</body>
+</html>
