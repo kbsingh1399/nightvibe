@@ -739,6 +739,11 @@
 
       const [activeOwnerVenueId, setActiveOwnerVenueId] = useState('venue_trilogy');
       const [activePrId, setActivePrId] = useState('pr_rahul');
+      const [hasJoinedPR, setHasJoinedPR] = useState(() => localStorage.getItem('nv_has_joined_pr') === 'true');
+      const [myPrProfile, setMyPrProfile] = useState(() => {
+        const saved = localStorage.getItem('nv_my_pr');
+        return saved ? JSON.parse(saved) : null;
+      });
 
       const [toast, setToast] = useState(null);
 
@@ -754,10 +759,12 @@
       useEffect(() => localStorage.setItem('nv_events', JSON.stringify(events)), [events]);
       useEffect(() => localStorage.setItem('nv_bookings', JSON.stringify(bookings)), [bookings]);
       useEffect(() => localStorage.setItem('nv_transactions', JSON.stringify(transactions)), [transactions]);
+      useEffect(() => localStorage.setItem('nv_has_joined_pr', hasJoinedPR ? 'true' : 'false'), [hasJoinedPR]);
+      useEffect(() => {
+        if (myPrProfile) localStorage.setItem('nv_my_pr', JSON.stringify(myPrProfile));
+      }, [myPrProfile]);
 
       // Add New PR Profile (LinkedIn for PRs)
-      // BUG FIX: New PRs start as pending_verification=true (not instantly live-verified)
-      // BUG FIX: Handle generation guards against empty name producing '@PR'
       const registerPRProfile = (newPrData) => {
         const safeName = (newPrData.name || 'NewHost').trim();
         const newId = `pr_${Date.now()}`;
@@ -787,7 +794,11 @@
         };
 
         setPromoters((prev) => [newPr, ...prev]);
-        showToast(`🎉 Profile submitted! ${safeName}, a club owner will verify and authorize you shortly.`, 'success');
+        setHasJoinedPR(true);
+        setMyPrProfile(newPr);
+        setActivePrId(newId);
+        setRole('pr');
+        showToast(`🎉 PR Profile Created! Welcome ${safeName}, your PR Console is now unlocked.`, 'success');
         return newPr;
       };
 
@@ -1011,6 +1022,10 @@
             setActiveOwnerVenueId,
             activePrId,
             setActivePrId,
+            hasJoinedPR,
+            setHasJoinedPR,
+            myPrProfile,
+            setMyPrProfile,
             toast,
             showToast,
             registerPRProfile,
@@ -1030,18 +1045,24 @@
 
     // --- HEADER COMPONENT ---
     const Header = ({ onOpenPasses, onOpenCreatePR, onOpenAuth }) => {
-      const { role, setRole, activeCity, setActiveCity, activeView, setActiveView, bookings, currentUser } = useApp();
+      const { role, setRole, activeCity, setActiveCity, activeView, setActiveView, bookings, currentUser, hasJoinedPR } = useApp();
       const [cityDropdown, setCityDropdown] = useState(false);
       const activeCount = bookings.filter((b) => b.status === 'ACTIVE').length;
 
-      return (
-        <header className="sticky top-0 z-40 border-b border-white/[0.04]" style={{background: 'rgba(6,8,14,0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)'}}>
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
-            <div className="flex items-center justify-between h-[56px] gap-3">
+      const roles = [
+        { key: 'guest', label: 'Guest', icon: '🎧' },
+        { key: 'owner', label: 'Club', icon: '🏢' },
+        ...(hasJoinedPR ? [{ key: 'pr', label: 'PR', icon: '👑' }] : []),
+      ];
 
-              {/* Logo + City */}
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => { setRole('guest'); setActiveView('events'); }}>
+      return (
+        <header className="sticky top-0 z-40 border-b border-white/[0.04]" style={{background: 'rgba(6,8,14,0.94)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)'}}>
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
+            <div className="grid grid-cols-12 items-center h-[58px] gap-2">
+
+              {/* Column 1 (Left): Logo + City Selector */}
+              <div className="col-span-4 flex items-center gap-3">
+                <div className="flex items-center gap-1.5 cursor-pointer select-none" onClick={() => { setRole('guest'); setActiveView('events'); }}>
                   <span className="text-xl font-black tracking-tight text-white">
                     NIGHT<span className="gradient-text-purple">VIBE</span>
                   </span>
@@ -1082,36 +1103,34 @@
                 </div>
               </div>
 
-              {/* Center Nav */}
-              <div className="hidden lg:flex items-center gap-0.5 p-0.5 rounded-lg bg-white/[0.03]">
-                <button
-                  onClick={() => setActiveView('events')}
-                  className={`px-3 py-1 rounded-md text-[11px] font-semibold transition ${
-                    activeView === 'events' ? 'bg-teal-500/20 text-teal-300' : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Events
-                </button>
-                <button
-                  onClick={() => setActiveView('pr_network')}
-                  className={`px-3 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1 ${
-                    activeView === 'pr_network' ? 'bg-teal-500/20 text-teal-300' : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  PR Directory
-                  <span className="text-[8px] font-black bg-amber-500 text-black px-1 py-px rounded leading-none">NEW</span>
-                </button>
+              {/* Column 2 (Center): View Navigation (Fixed Position & Always Centered) */}
+              <div className="col-span-4 flex items-center justify-center">
+                <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-white/[0.03] border border-white/[0.04]">
+                  <button
+                    onClick={() => setActiveView('events')}
+                    className={`px-3.5 py-1 rounded-md text-[11px] font-semibold transition ${
+                      activeView === 'events' ? 'bg-teal-500/20 text-teal-300' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Events
+                  </button>
+                  <button
+                    onClick={() => setActiveView('pr_network')}
+                    className={`px-3.5 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1 ${
+                      activeView === 'pr_network' ? 'bg-teal-500/20 text-teal-300' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    PR Directory
+                    <span className="text-[8px] font-black bg-amber-500 text-black px-1 py-px rounded leading-none">NEW</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Right side: roles + actions */}
-              <div className="flex items-center gap-2">
+              {/* Column 3 (Right): Persona Switcher + Passes + PR Status + Avatar */}
+              <div className="col-span-4 flex items-center justify-end gap-2">
                 {/* Role switcher */}
-                <div className="flex items-center gap-px p-0.5 rounded-lg bg-white/[0.03]">
-                  {[
-                    { key: 'guest', label: 'Guest', icon: '🎧' },
-                    { key: 'owner', label: 'Club', icon: '🏢' },
-                    { key: 'pr', label: 'PR', icon: '👑' },
-                  ].map(r => (
+                <div className="flex items-center gap-px p-0.5 rounded-lg bg-white/[0.03] border border-white/[0.04]">
+                  {roles.map(r => (
                     <button
                       key={r.key}
                       onClick={() => { setRole(r.key); setActiveView('events'); }}
@@ -1127,29 +1146,29 @@
                   ))}
                 </div>
 
-                {/* Passes badge */}
-                {role === 'guest' && (
+                {/* Join PR Button if not yet joined */}
+                {!hasJoinedPR && (
                   <button
-                    onClick={onOpenPasses}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-teal-300 bg-white/[0.03] hover:bg-teal-500/10 transition"
+                    onClick={onOpenCreatePR}
+                    title="Join as PR Host"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25 transition shadow-sm"
                   >
-                    🎟️
-                    <span className="hidden sm:inline">Passes</span>
-                    {activeCount > 0 && (
-                      <span className="w-4 h-4 rounded-full bg-teal-500 text-[9px] text-black flex items-center justify-center font-black">
-                        {activeCount}
-                      </span>
-                    )}
+                    ✨ <span>Join PR</span>
                   </button>
                 )}
 
-                {/* Join as PR */}
+                {/* Passes badge (Always constant space) */}
                 <button
-                  onClick={onOpenCreatePR}
-                  title="Join as PR"
-                  className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-amber-300 bg-white/[0.03] hover:bg-amber-500/10 transition"
+                  onClick={onOpenPasses}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-300 hover:text-teal-300 bg-white/[0.03] hover:bg-teal-500/10 border border-white/[0.04] transition"
                 >
-                  ✨ <span>Join PR</span>
+                  🎟️
+                  <span className="hidden sm:inline">Passes</span>
+                  {activeCount > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-teal-500 text-[9px] text-black flex items-center justify-center font-black">
+                      {activeCount}
+                    </span>
+                  )}
                 </button>
 
                 {/* Avatar */}
@@ -1157,9 +1176,10 @@
                   src={currentUser.avatar}
                   alt="User"
                   onClick={onOpenAuth}
-                  className="w-7 h-7 rounded-full object-cover ring-1 ring-white/10 hover:ring-teal-500/40 cursor-pointer transition"
+                  className="w-7 h-7 rounded-full object-cover ring-1 ring-white/10 hover:ring-teal-500/40 cursor-pointer transition shrink-0"
                 />
               </div>
+
             </div>
           </div>
         </header>
@@ -1208,6 +1228,44 @@
                   {role === 'owner' ? `🔍 Scouting for ${currentVenue.name}` : '⚡ 100% Direct Payouts & Zero Middleman'}
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* Perspective Switcher for Multi-Persona Review */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Scouting Perspective:</span>
+              <div className="flex items-center gap-1 p-0.5 rounded-xl bg-black/40 border border-white/10">
+                <button
+                  onClick={() => setRole('guest')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                    role === 'guest' ? 'bg-teal-500 text-black shadow-md' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  🎧 Guest Explorer View
+                </button>
+                <button
+                  onClick={() => setRole('owner')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                    role === 'owner' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black shadow-md' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  🏢 Club Owner Scout View
+                </button>
+                {hasJoinedPR && (
+                  <button
+                    onClick={() => setRole('pr')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                      role === 'pr' ? 'bg-amber-400 text-black shadow-md' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    👑 My PR Profile View
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="text-[11px] text-slate-400">
+              {role === 'owner' ? `Currently authorizing talent for ${currentVenue.name}` : 'Direct messaging & WhatsApp VIP booking enabled'}
             </div>
           </div>
 
