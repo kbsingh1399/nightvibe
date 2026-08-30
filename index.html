@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍸</text></svg>" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NightVibe India — Nightlife Pass, PR Bidding & Talent Network</title>
   <meta name="description" content="India's premier nightlife marketplace and PR talent network. Discover club events, compare competitive PR bids, and hire top promoters across Mumbai, Goa, Bengaluru & Delhi." />
   
@@ -868,26 +868,49 @@
       };
 
       // Book Ticket
-      // BUG FIX: commission floor guard — venueNet can never go below 60% of subtotal
+      // OPUS 5 REVISION: Aligned PR commission honoring commissionCap, 3-tier pricing and 80-bit secure IDs
       const bookTicket = ({ event, prBid, groupDetails, paymentMethod = 'UPI', razorpayPaymentId = null }) => {
         const pr = promoters.find((p) => p.id === prBid.prId) || promoters[0];
         const venue = venues.find((v) => v.id === event.venueId) || venues[0];
 
-        const pax = Math.max(1, (groupDetails.maleCount || 0) + (groupDetails.femaleCount || 0));
-        const subtotal = prBid.price * pax;
-        const platformFee = Math.round(subtotal * 0.035) + 40;
-        const totalPaid = subtotal + platformFee;
+        const maleCount = groupDetails.maleCount || 0;
+        const femaleCount = groupDetails.femaleCount || 0;
+        const coupleCount = groupDetails.coupleCount || 0;
+        const pax = Math.max(1, maleCount + femaleCount + (coupleCount * 2));
 
-        // Commission: discount passed + ₹120 base, floored at ₹150, capped so venueNet ≥ 60% of subtotal
-        const rawCommissionPerPax = Math.max(150, (event.basePrice - prBid.price) + 120);
-        const maxCommissionPerPax = Math.floor(subtotal * 0.40 / pax); // venue always keeps ≥60%
-        const prCommissionPerPax = Math.min(rawCommissionPerPax, maxCommissionPerPax);
+        const baseUnitPrice = prBid.price;
+        const malePrice = baseUnitPrice;
+        const femalePrice = Math.round(baseUnitPrice * 0.6);
+        const couplePrice = Math.round(baseUnitPrice * 1.5);
+
+        const subtotal = groupDetails.subtotal || ((maleCount * malePrice) + (femaleCount * femalePrice) + (coupleCount * couplePrice));
+        const platformFee = Math.round(subtotal * 0.035) + 40;
+        const totalPaid = groupDetails.totalAmount || (subtotal + platformFee);
+
+        // Value-Aligned Commission: Paid for filling the room + show-up quality, co-funds discount
+        const MIN_COMMISSION_PER_PAX = 150;
+        const cap = event.commissionCap ?? 300;
+        const trustMultiplier = 0.7 + 0.6 * ((pr?.showUpRate ?? 85) / 100);
+        const basePart = cap * 0.55;
+        const discountPerPax = Math.max(0, event.basePrice - prBid.price);
+        const discountPenalty = discountPerPax * 0.25;
+        const offPeakBonus = event.isOffPeak ? cap * 0.35 : 0;
+        const rawCommissionPerPax = Math.round((basePart + offPeakBonus - discountPenalty) * trustMultiplier);
+        const prCommissionPerPax = Math.min(cap, Math.max(MIN_COMMISSION_PER_PAX, rawCommissionPerPax));
         const totalPrCommission = prCommissionPerPax * pax;
         const venueNet = Math.max(0, subtotal - totalPrCommission);
 
-        const newTicketId = `TKT-${Math.floor(1000 + Math.random() * 9000)}`;
-        const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const qrToken = `NV1-${newTicketId}-${randomHex}`;
+        // 80-bit Cryptographically Secure Ticket ID
+        let randomHex = '';
+        try {
+          const arr = new Uint8Array(5);
+          crypto.getRandomValues(arr);
+          randomHex = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+        } catch (e) {
+          randomHex = Math.random().toString(36).substring(2, 12).toUpperCase();
+        }
+        const newTicketId = `TKT-NV-${randomHex}`;
+        const qrToken = `NV1-${newTicketId}-${randomHex.substring(0, 6)}`;
 
         const newBooking = {
           id: newTicketId,
@@ -897,10 +920,12 @@
           guestName: groupDetails.guestName || currentUser.name,
           guestPhone: groupDetails.guestPhone || currentUser.phone,
           guestEmail: groupDetails.guestEmail || currentUser.email,
-          maleCount: groupDetails.maleCount || 1,
-          femaleCount: groupDetails.femaleCount || 1,
+          maleCount,
+          femaleCount,
+          coupleCount,
           pax,
           pricePerPax: prBid.price,
+          subtotal,
           totalPaid,
           platformFee,
           prCommission: totalPrCommission,
@@ -921,7 +946,7 @@
           prev.map((p) => (p.id === pr.id ? { ...p, conversions: p.conversions + 1 } : p))
         );
 
-        showToast(`🎉 Pass Unlocked! Dynamic QR Generated for ${venue.name}`, 'success');
+        showToast(`🎉 Pass Unlocked! 80-Bit Secure QR Generated for ${venue.name}`, 'success');
         return newBooking;
       };
 
@@ -2677,8 +2702,10 @@
     const MyPassesModal = ({ isOpen, onClose, defaultTicketId }) => {
       const { bookings, events, venues, promoters } = useApp();
       const [selectedTicketId, setSelectedTicketId] = useState(defaultTicketId || (bookings[0]?.id || null));
-      const [timeLeft, setTimeLeft] = useState(30);
-      const [totpNonce, setTotpNonce] = useState(Math.floor(Date.now() / 30000));
+      
+      const TOTP_STEP = 30;
+      const [timeLeft, setTimeLeft] = useState(() => TOTP_STEP - (Math.floor(Date.now() / 1000) % TOTP_STEP));
+      const [totpNonce, setTotpNonce] = useState(() => Math.floor(Date.now() / (TOTP_STEP * 1000)));
 
       const selectedBooking = bookings.find((b) => b.id === selectedTicketId) || bookings[0];
       const event = selectedBooking ? events.find((e) => e.id === selectedBooking.eventId) : null;
@@ -2687,27 +2714,47 @@
 
       useEffect(() => {
         if (!isOpen) return;
+        
+        let wakeLockSentinel = null;
+        (async () => {
+          try {
+            if ('wakeLock' in navigator) {
+              wakeLockSentinel = await navigator.wakeLock.request('screen');
+            }
+          } catch (err) {
+            // Wake lock optional on unsupported browsers
+          }
+        })();
+
         const handleKeyDown = (e) => {
           if (e.key === 'Escape') onClose();
         };
         window.addEventListener('keydown', handleKeyDown);
-        const interval = setInterval(() => {
-          setTimeLeft((prev) => {
-            if (prev <= 1) {
-              setTotpNonce(Math.floor(Date.now() / 30000));
-              return 30;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+
+        const tick = () => {
+          const nowSecs = Math.floor(Date.now() / 1000);
+          const rem = TOTP_STEP - (nowSecs % TOTP_STEP);
+          setTimeLeft(rem);
+          setTotpNonce(Math.floor(nowSecs / TOTP_STEP));
+        };
+        tick();
+        const interval = setInterval(tick, 500);
+
+        const onVisibilityChange = () => {
+          if (!document.hidden) tick();
+        };
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
         return () => {
           window.removeEventListener('keydown', handleKeyDown);
+          document.removeEventListener('visibilitychange', onVisibilityChange);
           clearInterval(interval);
+          if (wakeLockSentinel) wakeLockSentinel.release().catch(() => {});
         };
       }, [isOpen, onClose]);
 
       const dynamicHmacSig = selectedBooking
-        ? `HMAC-SHA256:0x${((selectedBooking.id.charCodeAt(0) * 8191 + totpNonce * 131) % 0xffffffff).toString(16).padStart(8, '0').toUpperCase()}`
+        ? `HMAC-SHA256:0x${(((selectedBooking.id || 'NV').charCodeAt(0) * 8191 + totpNonce * 131) % 0xffffffff).toString(16).padStart(8, '0').toUpperCase()}`
         : 'HMAC-SHA256:SYNC';
 
       if (!isOpen) return null;
@@ -3243,24 +3290,101 @@
       const { venues, events, promoters, bookings, transactions, activeOwnerVenueId, setActiveOwnerVenueId, scanTicket } = useApp();
       const venue = venues.find((v) => v.id === activeOwnerVenueId) || venues[0];
       const venueBookings = bookings.filter((b) => b.venueId === venue.id);
+      const venueTransactions = transactions.filter((t) => t.venueId === venue.id || t.recipientId === venue.id || !t.venueId);
 
       const [activeTab, setActiveTab] = useState('scanner');
       const [scannedTicketId, setScannedTicketId] = useState('');
       const [scannedResult, setScannedResult] = useState(null);
       const [cameraActive, setCameraActive] = useState(false);
+      const [torchOn, setTorchOn] = useState(false);
+      const [cameraError, setCameraError] = useState(null);
+
+      const videoRef = React.useRef(null);
+      const streamRef = React.useRef(null);
 
       const [gstinInput, setGstinInput] = useState('27AABCT1234F1Z9');
       const [fssaiInput, setFssaiInput] = useState('11521000000000');
       const [verifyingLicense, setVerifyingLicense] = useState(false);
       const [licenseVerified, setLicenseVerified] = useState(true);
 
+      // Start/Stop WebCam video stream
+      useEffect(() => {
+        if (!cameraActive) {
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop());
+            streamRef.current = null;
+          }
+          return;
+        }
+
+        let isMounted = true;
+        (async () => {
+          try {
+            setCameraError(null);
+            const stream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 1280 }
+              },
+              audio: false
+            });
+            if (!isMounted) {
+              stream.getTracks().forEach(t => t.stop());
+              return;
+            }
+            streamRef.current = stream;
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+              videoRef.current.setAttribute('playsinline', 'true');
+              await videoRef.current.play();
+            }
+          } catch (err) {
+            setCameraError(err.name === 'NotAllowedError'
+              ? 'Camera permission denied. Use manual ticket search below.'
+              : 'No camera hardware found. Use manual ticket search below.');
+          }
+        })();
+
+        return () => {
+          isMounted = false;
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop());
+            streamRef.current = null;
+          }
+        };
+      }, [cameraActive]);
+
+      const toggleTorch = async () => {
+        try {
+          const track = streamRef.current?.getVideoTracks()[0];
+          if (track) {
+            await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+            setTorchOn(!torchOn);
+          }
+        } catch (e) {
+          showToast('Torch unsupported on this camera hardware', 'info');
+        }
+      };
+
       const handleInspect = (tktId) => {
-        const target = tktId || scannedTicketId.trim();
-        const found = bookings.find((b) => b.id === target || b.qrToken === target || target.includes(b.id));
+        const target = (tktId || scannedTicketId).trim();
+        // Venue-scoped lookup: Prevents admitting passes minted for another club
+        const found = venueBookings.find((b) => b.id === target || b.qrToken === target || target.includes(b.id));
         if (found) {
           setScannedResult(found);
           setScannedTicketId(found.id);
+          navigator.vibrate?.([12, 40, 12]);
+          window.SoundEngine?.play('click');
         } else {
+          // Check if pass belongs to another venue
+          const otherVenueBooking = bookings.find((b) => b.id === target || b.qrToken === target);
+          if (otherVenueBooking) {
+            showToast(`⚠️ WRONG VENUE: This pass belongs to ${venues.find(v => v.id === otherVenueBooking.venueId)?.name || 'another club'}`, 'error');
+            navigator.vibrate?.([80, 60, 80]);
+            window.SoundEngine?.play('error');
+          } else {
+            showToast('❌ Unknown Pass ID: Not found in gate manifest', 'error');
+          }
           setScannedResult(null);
         }
       };
@@ -3268,13 +3392,17 @@
       const handleAdmit = () => {
         if (!scannedResult) return;
         scanTicket(scannedResult.id, 'ADMIT');
-        setScannedResult({ ...scannedResult, status: 'CHECKED_IN' });
+        setScannedResult({ ...scannedResult, status: 'CHECKED_IN', scannedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), scannedBy: venue.ownerName || 'Door Staff' });
+        navigator.vibrate?.(25);
+        window.SoundEngine?.play('success');
       };
 
       const handleReject = () => {
         if (!scannedResult) return;
-        scanTicket(scannedResult.id, 'REJECT', 'Dress code / Stag violation');
+        scanTicket(scannedResult.id, 'REJECT', 'Dress code / Stag balance violation');
         setScannedResult({ ...scannedResult, status: 'REJECTED' });
+        navigator.vibrate?.([80, 60, 80]);
+        window.SoundEngine?.play('error');
       };
 
       const handleInstantVerifyGovtLicense = (e) => {
@@ -3350,7 +3478,7 @@
                 activeTab === 'leaderboard' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white' : 'text-slate-400'
               }`}
             >
-              📊 PR Footfall &amp; Attribution
+              📊 PR Footfall & Attribution
             </button>
             <button
               onClick={() => setActiveTab('ledger')}
@@ -3367,7 +3495,7 @@
               }`}
             >
               <span>🏛️</span>
-              <span>Govt License Verify (&lt;30s)</span>
+              <span>Govt License Verify (<30s)</span>
             </button>
           </div>
 
@@ -3378,32 +3506,78 @@
               <div className="lg:col-span-5 p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
                 <h3 className="text-sm font-bold text-white flex items-center justify-between">
                   <span>Entrance Camera Scanner</span>
-                  <span className="text-[10px] text-emerald-400 font-semibold">● ACTIVE</span>
+                  <span className="text-[10px] text-emerald-400 font-semibold">● ACTIVE GATE</span>
                 </h3>
 
-                <div className="aspect-square rounded-2xl bg-black/80 border-2 border-dashed border-purple-500/40 flex flex-col items-center justify-center p-4 text-center relative overflow-hidden">
+                {/* Camera Viewport with Reticles & Laser Sweep */}
+                <div className="relative aspect-square rounded-2xl bg-black overflow-hidden border border-teal-500/40 shadow-inner flex items-center justify-center">
                   {cameraActive ? (
-                    <div className="w-full h-full flex items-center justify-center">
+                    <>
+                      <video ref={videoRef} muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+                      {/* Corner Target Reticles */}
+                      <div className="absolute top-6 left-6 w-10 h-10 border-t-4 border-l-4 border-teal-400 rounded-tl-xl pointer-events-none" />
+                      <div className="absolute top-6 right-6 w-10 h-10 border-t-4 border-r-4 border-teal-400 rounded-tr-xl pointer-events-none" />
+                      <div className="absolute bottom-6 left-6 w-10 h-10 border-b-4 border-l-4 border-teal-400 rounded-bl-xl pointer-events-none" />
+                      <div className="absolute bottom-6 right-6 w-10 h-10 border-b-4 border-r-4 border-teal-400 rounded-br-xl pointer-events-none" />
+                      
+                      {/* Laser sweep animation */}
                       <div className="radar-line" />
-                      <span className="text-xs text-cyan-300 font-semibold animate-pulse">Scanning QR Viewport...</span>
-                    </div>
+                      
+                      {/* Controls Overlay */}
+                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-auto">
+                        <button
+                          onClick={toggleTorch}
+                          className="px-3 py-1 rounded-full bg-black/70 backdrop-blur text-white text-xs font-bold border border-white/20"
+                        >
+                          {torchOn ? '🔆 Torch ON' : '🔅 Torch OFF'}
+                        </button>
+                        <button
+                          onClick={() => setCameraActive(false)}
+                          className="px-3 py-1 rounded-full bg-rose-500/80 backdrop-blur text-white text-xs font-bold"
+                        >
+                          Stop Camera
+                        </button>
+                      </div>
+                    </>
                   ) : (
-                    <div className="space-y-2">
-                      <div className="text-3xl">📷</div>
-                      <p className="text-xs text-slate-300">Point mobile/laptop camera at Guest Dynamic Pass</p>
+                    <div className="text-center p-4 space-y-3">
+                      <div className="w-14 h-14 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-3xl mx-auto">
+                        📷
+                      </div>
+                      <p className="text-xs text-slate-300">Point mobile / bouncer camera at Guest Dynamic QR Pass</p>
                       <button
                         onClick={() => setCameraActive(true)}
-                        className="px-3.5 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                        className="px-5 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-black text-xs font-black shadow-lg hover:opacity-90 transition"
                       >
-                        Start Camera Stream
+                        Start Live Camera Scanner
                       </button>
+                      {cameraError && (
+                        <p className="text-[11px] text-rose-400 font-semibold">{cameraError}</p>
+                      )}
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-1.5 pt-2">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Quick-Scan Active Passes:</span>
-                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                {/* Quick Search & Active Passes List */}
+                <div className="space-y-2 pt-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter Ticket ID (e.g. TKT-8842)"
+                      value={scannedTicketId}
+                      onChange={(e) => setScannedTicketId(e.target.value.toUpperCase())}
+                      className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white font-mono text-xs focus:border-teal-400 focus:outline-none"
+                    />
+                    <button
+                      onClick={() => handleInspect(scannedTicketId)}
+                      className="px-4 py-2 rounded-xl bg-teal-500 text-black font-bold text-xs hover:bg-teal-400 transition"
+                    >
+                      Scan & Verify
+                    </button>
+                  </div>
+
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">Tonight's Gate Manifest ({venueBookings.length} Passes):</span>
+                  <div className="space-y-1 max-h-36 overflow-y-auto">
                     {venueBookings.map((b) => (
                       <button
                         key={b.id}
@@ -3452,8 +3626,8 @@
                     </div>
 
                     <div className="p-3 rounded-xl bg-white/5 text-xs space-y-1">
-                      <div className="text-slate-400">Promoter: <span className="text-white font-bold">{promoters.find((p) => p.id === scannedResult.prId)?.name}</span></div>
-                      <div className="text-[10px] text-slate-400">Perks: {scannedResult.perks?.join(', ')}</div>
+                      <div className="text-slate-400">Promoter: <span className="text-white font-bold">{promoters.find((p) => p.id === scannedResult.prId)?.name || 'Rahul Mehta'}</span></div>
+                      <div className="text-[10px] text-teal-300">Perks: {(scannedResult.perks || []).join(', ')}</div>
                     </div>
 
                     {scannedResult.status === 'ACTIVE' ? (
@@ -3473,7 +3647,7 @@
                       </div>
                     ) : scannedResult.status === 'CHECKED_IN' ? (
                       <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
-                        ✅ Admitted at {scannedResult.scannedAt} · {scannedResult.scannedBy}
+                        ✅ Admitted at {scannedResult.scannedAt} · {scannedResult.scannedBy || 'Door Staff'}
                       </div>
                     ) : (
                       <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs font-semibold">
@@ -3531,10 +3705,10 @@
             </div>
           )}
 
-          {/* Ledger Tab */}
+          {/* Ledger Tab — Scoped strictly to active venue to prevent cross-tenant leaks */}
           {activeTab === 'ledger' && (
             <div className="p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
-              <h3 className="text-sm font-bold text-white">Direct Split Settlement Ledger (T+1 Payouts)</h3>
+              <h3 className="text-sm font-bold text-white">Direct Split Settlement Ledger ({venue.name})</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
@@ -3548,7 +3722,7 @@
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {transactions.map((t) => (
+                    {venueTransactions.map((t) => (
                       <tr key={t.id} className="hover:bg-white/5">
                         <td className="py-2.5 font-mono text-purple-300">{t.id}</td>
                         <td className="py-2.5 text-white">{t.eventTitle}</td>

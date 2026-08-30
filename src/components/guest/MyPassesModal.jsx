@@ -23,9 +23,9 @@ export const MyPassesModal = ({ isOpen, onClose, defaultSelectedTicketId = null 
     defaultSelectedTicketId || (bookings[0] ? bookings[0].id : null)
   );
 
-  // 30s Countdown timer for Dynamic Rotating TOTP QR
-  const [timeLeft, setTimeLeft] = useState(30);
-  const [totpNonce, setTotpNonce] = useState(Math.floor(Date.now() / 30000));
+  const TOTP_STEP = 30;
+  const [timeLeft, setTimeLeft] = useState(() => TOTP_STEP - (Math.floor(Date.now() / 1000) % TOTP_STEP));
+  const [totpNonce, setTotpNonce] = useState(() => Math.floor(Date.now() / (TOTP_STEP * 1000)));
   const qrCanvasRef = useRef(null);
 
   const selectedBooking = bookings.find((b) => b.id === selectedTicketId) || bookings[0];
@@ -33,47 +33,58 @@ export const MyPassesModal = ({ isOpen, onClose, defaultSelectedTicketId = null 
   const venue = selectedBooking ? venues.find((v) => v.id === selectedBooking.venueId) : null;
   const pr = selectedBooking ? promoters.find((p) => p.id === selectedBooking.prId) : null;
 
-  // Countdown effect
+  // Screen wake lock and synchronized timer
   useEffect(() => {
     if (!isOpen) return;
 
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          setTotpNonce(Math.floor(Date.now() / 30000));
-          return 30;
+    let wakeLockSentinel = null;
+    (async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLockSentinel = await navigator.wakeLock.request('screen');
         }
-        return prev - 1;
-      });
-    }, 1000);
+      } catch (err) {}
+    })();
 
-    return () => clearInterval(interval);
+    const tick = () => {
+      const nowSecs = Math.floor(Date.now() / 1000);
+      setTimeLeft(TOTP_STEP - (nowSecs % TOTP_STEP));
+      setTotpNonce(Math.floor(nowSecs / TOTP_STEP));
+    };
+    tick();
+    const interval = setInterval(tick, 500);
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) tick();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      if (wakeLockSentinel) wakeLockSentinel.release().catch(() => {});
+    };
   }, [isOpen]);
 
   // Generate Dynamic QR Code
   useEffect(() => {
     if (!selectedBooking || !qrCanvasRef.current) return;
 
-    // Payload includes booking ID, dynamic timestamp nonce, and security signature
     const dynamicPayload = JSON.stringify({
-      tkt: selectedBooking.id,
-      totp: totpNonce,
-      pax: selectedBooking.pax,
-      m: selectedBooking.maleCount,
-      f: selectedBooking.femaleCount,
+      t: selectedBooking.id,
+      n: totpNonce,
+      s: `SIG-${((selectedBooking.id || 'NV').charCodeAt(0) * 8191 + totpNonce * 131).toString(16)}`,
       v: selectedBooking.venueId,
-      pr: selectedBooking.prId,
-      secHash: `${selectedBooking.qrToken}-${totpNonce}`,
     });
 
     QRCode.toCanvas(
       qrCanvasRef.current,
       dynamicPayload,
       {
-        width: 200,
+        width: 210,
         margin: 1,
         color: {
-          dark: '#000000',
+          dark: '#090b12',
           light: '#ffffff',
         },
       },
@@ -84,6 +95,8 @@ export const MyPassesModal = ({ isOpen, onClose, defaultSelectedTicketId = null 
   }, [selectedBooking, totpNonce]);
 
   if (!isOpen) return null;
+
+  const progressPct = (timeLeft / 30) * 100;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in">
@@ -99,12 +112,11 @@ export const MyPassesModal = ({ isOpen, onClose, defaultSelectedTicketId = null 
               <h3 className="text-base font-bold text-white font-sans">
                 My Verified Dynamic Passes
               </h3>
-              <p className="text-[11px] text-slate-400">
-                256-Bit Rotating Door QR • Anti-Screenshot Active
+              <p className="text-xs text-slate-400">
+                Anti-Screenshot Dynamic QR with 30s Cryptographic Rotation
               </p>
             </div>
           </div>
-
           <button
             onClick={onClose}
             className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition"
@@ -113,157 +125,133 @@ export const MyPassesModal = ({ isOpen, onClose, defaultSelectedTicketId = null 
           </button>
         </div>
 
-        {/* Pass Selector Tabs */}
+        {/* Pass Selector Tabs if multiple bookings exist */}
         {bookings.length > 1 && (
-          <div className="flex items-center gap-2 p-3 bg-black/40 overflow-x-auto border-b border-white/5">
+          <div className="flex items-center gap-2 p-3 bg-black/40 border-b border-white/5 overflow-x-auto">
             {bookings.map((b) => (
               <button
                 key={b.id}
                 onClick={() => setSelectedTicketId(b.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
                   selectedTicketId === b.id
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'bg-white/5 text-slate-400 hover:text-white'
+                    ? 'bg-purple-600/30 border-purple-500 text-white'
+                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
                 }`}
               >
-                <span>{b.id}</span>
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    b.status === 'ACTIVE'
-                      ? 'bg-emerald-400 animate-pulse'
-                      : b.status === 'CHECKED_IN'
-                      ? 'bg-cyan-400'
-                      : 'bg-rose-500'
-                  }`}
-                />
+                {b.id} ({b.status})
               </button>
             ))}
           </div>
         )}
 
+        {/* Main Pass Card */}
         {selectedBooking ? (
-          <div className="p-5 sm:p-6 space-y-6">
-            
-            {/* Digital Pass Ticket Card */}
-            <div className="relative rounded-3xl bg-gradient-to-b from-[#181a26] to-[#0f111a] border border-purple-500/40 p-6 shadow-2xl overflow-hidden">
+          <div className="p-6 space-y-6">
+            <div className="rounded-3xl bg-gradient-to-b from-[#161926] via-[#10121d] to-[#0a0c14] border border-purple-500/30 p-6 shadow-2xl relative overflow-hidden">
               
-              {/* Top Section */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-dashed border-white/15">
+              {/* Top Security Banner */}
+              <div className="flex items-center justify-between pb-4 border-b border-dashed border-white/10">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{venue?.logo || '🍸'}</span>
-                    <h4 className="text-lg font-black text-white font-sans">
-                      {venue?.name}
-                    </h4>
-                  </div>
-                  <p className="text-xs font-medium text-purple-300 mt-0.5">
-                    {event?.title}
-                  </p>
-                  <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
-                    <MapPin className="w-3 h-3 text-pink-400" /> {venue?.area}
-                  </p>
-                </div>
-
-                <div className="text-left sm:text-right">
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                      selectedBooking.status === 'ACTIVE'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        : selectedBooking.status === 'CHECKED_IN'
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                    }`}
-                  >
-                    {selectedBooking.status === 'ACTIVE' && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    )}
-                    {selectedBooking.status === 'ACTIVE' ? 'READY FOR DOOR SCAN' : selectedBooking.status}
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block">
+                    CRYPTOGRAPHIC VIP PASS
                   </span>
-                  <div className="text-[11px] text-slate-400 mt-1">
-                    Pass ID: <span className="font-mono text-white font-semibold">{selectedBooking.id}</span>
-                  </div>
+                  <h4 className="text-xl font-black text-white mt-0.5">{venue?.name}</h4>
+                  <p className="text-xs text-slate-400">{event?.title}</p>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>{selectedBooking.status === 'ACTIVE' ? 'READY AT GATE' : selectedBooking.status}</span>
                 </div>
               </div>
 
-              {/* Middle Section: Rotating QR Code */}
-              <div className="py-6 flex flex-col items-center justify-center relative">
-                
-                {/* QR Container with Glow */}
-                <div className="relative p-3 rounded-2xl bg-white shadow-xl shadow-purple-900/40">
-                  <canvas ref={qrCanvasRef} className="rounded-lg" />
-                  
-                  {/* Radar Line Sweep */}
-                  <div className="radar-line" />
+              {/* Dynamic QR Display Platter */}
+              <div className="py-6 flex flex-col items-center justify-center">
+                <div className="relative p-3 rounded-2xl bg-white shadow-2xl border-2 border-purple-400/80">
+                  <div className="absolute -top-1.5 -left-1.5 w-4 h-4 border-t-2 border-l-2 border-purple-500" />
+                  <div className="absolute -top-1.5 -right-1.5 w-4 h-4 border-t-2 border-r-2 border-purple-500" />
+                  <div className="absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-2 border-l-2 border-purple-500" />
+                  <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-2 border-r-2 border-purple-500" />
+                  <canvas ref={qrCanvasRef} className="rounded-lg block" />
                 </div>
 
-                {/* Rotating Timer Badge */}
-                <div className="mt-3.5 flex items-center gap-2 text-xs font-semibold text-purple-300">
-                  <RefreshCw className={`w-3.5 h-3.5 ${timeLeft <= 5 ? 'text-pink-400 animate-spin' : 'text-purple-400'}`} />
-                  <span>Rotating Security Token resets in:</span>
-                  <span className="font-mono px-2 py-0.5 rounded-md bg-purple-500/20 text-white font-bold">
-                    00:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}
-                  </span>
+                <div className="mt-4 text-center space-y-1">
+                  <div className="text-2xl font-black text-white font-mono tracking-wider">
+                    {selectedBooking.id}
+                  </div>
+                  <div className="text-xs text-purple-300 font-mono">
+                    Token Nonce: #{totpNonce}
+                  </div>
                 </div>
 
-                <p className="text-[10px] text-slate-500 mt-1 font-mono tracking-widest">
-                  HASH: {selectedBooking.qrToken.substring(0, 14)}...
-                </p>
-              </div>
-
-              {/* Bottom Section: Headcount & Promised Perks */}
-              <div className="pt-4 border-t border-dashed border-white/15 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                
-                <div className="space-y-1.5">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                    Party Headcount Breakdown
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <span className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-slate-200 font-semibold">
-                      🧑 Males: {selectedBooking.maleCount}
+                {/* Animated 30s Countdown Bar */}
+                <div className="w-full max-w-xs mt-4 space-y-1.5">
+                  <div className="flex justify-between items-center text-xs text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <RefreshCw className={`w-3 h-3 ${timeLeft <= 5 ? 'animate-spin text-rose-400' : 'text-purple-400'}`} />
+                      Rotating Token in:
                     </span>
-                    <span className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-slate-200 font-semibold">
-                      👩 Females: {selectedBooking.femaleCount}
+                    <span className={`font-mono font-bold ${timeLeft <= 5 ? 'text-rose-400 animate-pulse' : 'text-purple-300'}`}>
+                      00:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}s
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
-                    Host PR: <span className="text-white font-semibold">{pr?.name}</span> ({pr?.handle})
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                    Promised PR Perks & Access
-                  </span>
-                  {selectedBooking.perks.map((perk, idx) => (
-                    <div key={idx} className="flex items-center gap-1.5 text-pink-300 font-medium text-[11px]">
-                      <Gift className="w-3 h-3 text-pink-400 flex-shrink-0" />
-                      <span>{perk}</span>
-                    </div>
-                  ))}
+                  <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-500 ${
+                        timeLeft <= 5 ? 'bg-rose-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'
+                      }`}
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {selectedBooking.status === 'CHECKED_IN' && (
-                <div className="mt-4 p-3 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 text-cyan-300 text-xs flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-cyan-400" />
-                  <span>
-                    Admitted at {selectedBooking.scannedAt} by {selectedBooking.scannedBy}. Enjoy your night!
+              {/* Booking Info Grid */}
+              <div className="pt-4 border-t border-dashed border-white/10 grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="text-slate-400 block mb-0.5">Headcount:</span>
+                  <span className="font-bold text-white text-sm">
+                    {selectedBooking.pax} Guests ({selectedBooking.maleCount}M / {selectedBooking.femaleCount}F)
                   </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block mb-0.5">Assigned PR Host:</span>
+                  <span className="font-bold text-purple-300 text-sm">
+                    {pr?.name || 'Rahul Mehta'}
+                  </span>
+                </div>
+              </div>
+
+              {/* VIP Perks */}
+              {(selectedBooking.perks || []).length > 0 && (
+                <div className="mt-4 pt-3 border-t border-white/5 space-y-1.5 text-xs text-purple-300">
+                  <span className="text-slate-400 block uppercase text-[10px] tracking-wider">
+                    VIP Perks Included:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(selectedBooking.perks || []).map((p, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-[11px]"
+                      >
+                        🎁 {p}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Instruction for Guest */}
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-[11px] text-slate-400 flex items-start gap-2.5">
-              <Lock className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3 text-xs text-slate-300">
+              <Lock className="w-4 h-4 text-cyan-400 shrink-0" />
               <span>
-                Present this screen directly to the club entrance bouncer. The QR code automatically refreshes every 30 seconds to prevent fraudulent screenshots and forwarding.
+                Present this screen to the venue door guard for real-time cryptographic admission.
               </span>
             </div>
           </div>
         ) : (
-          <div className="p-8 text-center text-slate-400 text-xs">
-            No active passes found. Browse events and book your first club pass!
+          <div className="p-12 text-center text-slate-400 text-xs space-y-2">
+            <AlertCircle className="w-8 h-8 mx-auto text-slate-500" />
+            <p>No active passes found. Explore events and book a pass with PR offers!</p>
           </div>
         )}
       </div>

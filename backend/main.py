@@ -15,13 +15,16 @@ from backend.security import (
     create_access_token,
     decode_access_token,
     verify_razorpay_signature,
-    SECRET_MASTER_KEY
+    pass_secret,
+    JWT_SECRET,
+    PASS_HMAC_KEY
 )
+from backend.deps import current_user, require_role, require_venue_staff
 
 app = FastAPI(
     title="NightVibe India API",
-    description="Two-Sided Nightlife Fintech Platform: Dynamic PR Bidding, Escrow Holds & Cryptographic Gate Scanning",
-    version="1.1.0"
+    description="Three-Sided Nightlife Fintech Platform: Dynamic PR Bidding, Escrow Holds & Cryptographic Two-Phase Gate Admission",
+    version="1.2.0"
 )
 
 # Configurable CORS origins
@@ -34,12 +37,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-Memory DB Store for fast prototyping & high-fidelity simulation
+# In-Memory DB Store with Nonce Burn Cache
 DB_STATE: Dict[str, Any] = {
     "venues": [
-        {"id": "venue_trilogy", "name": "Trilogy Club & Lounge", "area": "Juhu", "city": "mumbai", "capacity": 600, "occupancy": 380, "claimPin": "8844"},
-        {"id": "venue_koko", "name": "Kōkō Luxury Bar & Club", "area": "Lower Parel", "city": "mumbai", "capacity": 450, "occupancy": 290, "claimPin": "1122"},
-        {"id": "venue_bastian", "name": "Bastian At The Top", "area": "Bandra West", "city": "mumbai", "capacity": 550, "occupancy": 410, "claimPin": "9933"}
+        {"id": "venue_trilogy", "name": "Trilogy Club & Lounge", "area": "Juhu", "city": "mumbai", "capacity": 600, "occupancy": 380, "claimPin": "8844", "gstin": "27AABCT1234F1Z9", "fssai": "11521000000000"},
+        {"id": "venue_koko", "name": "Kōkō Luxury Bar & Club", "area": "Lower Parel", "city": "mumbai", "capacity": 450, "occupancy": 290, "claimPin": "1122", "gstin": "27AAACK5678P1Z3", "fssai": "11521000000001"},
+        {"id": "venue_bastian", "name": "Bastian At The Top", "area": "Bandra West", "city": "mumbai", "capacity": 550, "occupancy": 410, "claimPin": "9933", "gstin": "27AAACB9012K1Z7", "fssai": "11521000000002"}
     ],
     "events": [
         {
@@ -50,19 +53,29 @@ DB_STATE: Dict[str, Any] = {
             "date": "Tonight, 10:00 PM onwards",
             "basePrice": 2000,
             "floorPrice": 1400,
+            "commissionCap": 350,
+            "soldPax": 140,
+            "targetPax": 300,
+            "isOffPeak": False,
             "image": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80",
+            "approvedPerks": [
+                {"id": "perk_free_shots", "name": "Free Welcome Shooter", "value": 400},
+                {"id": "perk_queue_jump", "name": "VIP Queue Jump", "value": 500}
+            ],
             "bids": [
                 {"id": "bid_trilogy_1", "prId": "pr_arjun", "price": 1700, "perks": ["perk_free_shots", "perk_queue_jump"], "notes": "VIP back-room access included"}
             ]
         }
     ],
     "promoters": [
-        {"id": "pr_arjun", "name": "Arjun Malhotra", "handle": "@arjun_nightlife", "rating": 4.9, "showUpRate": 94, "conversions": 340, "walletInr": 14500, "upiId": "arjun.malhotra@okhdfcbank", "phone": "+91 98201 12345"}
+        {"id": "pr_arjun", "name": "Arjun Malhotra", "handle": "@arjun_nightlife", "rating": 4.9, "showUpRate": 94, "conversions": 340, "walletInr": 14500, "upiId": "arjun.malhotra@okhdfcbank", "phone": "+91 98201 12345", "verified": True, "authorizedVenues": ["venue_trilogy", "venue_koko"]}
     ],
     "users": {},
     "otp_store": {},
+    "nonce_burn": set(), # Single-use nonce cache to prevent QR replay inside the live window
     "bookings": [],
-    "escrow_ledger": []
+    "escrow_ledger": [],
+    "table_spends": []
 }
 
 # --- Pydantic Schemas ---
@@ -74,17 +87,12 @@ class VerifyOTPRequest(BaseModel):
     otp: str = Field(..., example="123456")
     name: Optional[str] = "Nightlife Guest"
 
-class UpgradeRoleRequest(BaseModel):
-    role: str = Field(..., example="pr") # 'pr' or 'owner'
-    prProfile: Optional[Dict[str, Any]] = None
-    venueId: Optional[str] = None
-    claimPin: Optional[str] = None
-
 class CreateBookingRequest(BaseModel):
     eventId: str
     prBidId: str
-    maleCount: int
-    femaleCount: int
+    maleCount: int = 0
+    femaleCount: int = 0
+    coupleCount: int = 0
     guestName: Optional[str] = "Guest User"
     guestPhone: Optional[str] = "+91 9876543210"
     paymentMethod: Optional[str] = "RAZORPAY_UPI"
@@ -92,8 +100,19 @@ class CreateBookingRequest(BaseModel):
 class ScanTicketRequest(BaseModel):
     ticketId: str
     totpNonce: int
-    signature: str # Mandated signature parameter (fixes bypass vulnerability S6)
+    signature: str
     venueId: str
+
+class GateAdmitRequest(BaseModel):
+    ticketId: str
+    venueId: str
+    doorStaffNote: Optional[str] = ""
+
+class GateRejectRequest(BaseModel):
+    ticketId: str
+    venueId: str
+    reason: str
+    photoEvidenceUrl: Optional[str] = None
 
 class PublishBidRequest(BaseModel):
     eventId: str
@@ -101,6 +120,13 @@ class PublishBidRequest(BaseModel):
     price: int
     perks: List[str]
     notes: Optional[str] = ""
+
+class TableSpendWebhookRequest(BaseModel):
+    bookingId: str
+    venueId: str
+    fnbInr: int
+    bottleInr: int
+    posBillId: str
 
 # --- Authentication Endpoints ---
 
@@ -110,15 +136,17 @@ def send_otp(req: SendOTPRequest):
     if len(clean_phone) < 10:
         raise HTTPException(status_code=400, detail="Invalid Indian mobile number")
     
-    # In production: Dispatch via MSG91 / Fast2SMS API
-    simulated_otp = "123456" # Fixed for local dev; secrets.randbelow(900000) + 100000 in prod
+    # In production generate 6-digit random; allow 123456 only in non-production
+    is_prod = os.getenv("ENV") == "production"
+    otp_code = str(secrets.randbelow(900000) + 100000) if is_prod else "123456"
+    
     DB_STATE["otp_store"][clean_phone] = {
-        "otp": simulated_otp,
+        "otp": otp_code,
         "createdAt": datetime.datetime.utcnow().isoformat()
     }
     return {
         "status": "SUCCESS",
-        "message": f"6-digit OTP sent to {clean_phone}. (Dev test OTP: {simulated_otp})",
+        "message": "6-digit OTP code dispatched successfully",
         "phone": clean_phone
     }
 
@@ -127,155 +155,110 @@ def verify_otp(req: VerifyOTPRequest):
     clean_phone = req.phone.strip()
     stored = DB_STATE["otp_store"].get(clean_phone)
     
-    if not stored or (req.otp != stored["otp"] and req.otp != "123456"):
-        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    is_prod = os.getenv("ENV") == "production"
+    valid_otp = False
     
-    # Check or create user profile
-    user = DB_STATE["users"].get(clean_phone)
-    if not user:
-        user = {
-            "id": f"usr_{uuid.uuid4().hex[:8]}",
-            "phone": clean_phone,
-            "name": req.name or "Nightlife Guest",
-            "roles": ["guest"],
-            "hasJoinedPR": False,
-            "createdAt": datetime.datetime.utcnow().isoformat()
-        }
-        DB_STATE["users"][clean_phone] = user
+    if stored and req.otp == stored["otp"]:
+        valid_otp = True
+    elif not is_prod and req.otp == "123456": # Safe local sandbox fallback only
+        valid_otp = True
+        
+    if not valid_otp:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP code")
     
-    token = create_access_token(clean_phone, user["roles"], {"userId": user["id"], "name": user["name"]})
+    # Resolve user roles
+    roles = ["guest"]
+    matching_pr = next((p for p in DB_STATE["promoters"] if p["phone"] == clean_phone), None)
+    if matching_pr:
+        roles.append("pr")
+        
+    user_record = {
+        "phone": clean_phone,
+        "name": req.name or "Nightlife Guest",
+        "roles": roles,
+        "isLoggedIn": True,
+        "lastLogin": datetime.datetime.utcnow().isoformat()
+    }
+    DB_STATE["users"][clean_phone] = user_record
+    
+    token = create_access_token(
+        phone=clean_phone,
+        roles=roles,
+        metadata={"name": user_record["name"], "prId": matching_pr["id"] if matching_pr else None}
+    )
+    
     return {
         "status": "SUCCESS",
-        "access_token": token,
-        "token_type": "bearer",
-        "user": user
+        "token": token,
+        "user": user_record
     }
 
-@app.post("/api/auth/upgrade-role")
-def upgrade_role(req: UpgradeRoleRequest, authorization: Optional[str] = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication token required")
-    
-    token = authorization.split(" ")[1]
-    try:
-        payload = decode_access_token(token)
-        phone = payload["sub"]
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    user = DB_STATE["users"].get(phone)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if req.role == "pr":
-        if "pr" not in user["roles"]:
-            user["roles"].append("pr")
-        user["hasJoinedPR"] = True
-        user["prProfile"] = req.prProfile
-    elif req.role == "owner":
-        venue = next((v for v in DB_STATE["venues"] if v["id"] == req.venueId), None)
-        if not venue or venue.get("claimPin") != req.claimPin:
-            raise HTTPException(status_code=403, detail="Invalid Venue Claim PIN")
-        if "owner" not in user["roles"]:
-            user["roles"].append("owner")
-        user["ownedVenueId"] = req.venueId
-    
-    new_token = create_access_token(phone, user["roles"], {"userId": user["id"], "name": user["name"]})
-    return {
-        "status": "SUCCESS",
-        "access_token": new_token,
-        "user": user
-    }
+# --- Booking & Checkout Endpoints ---
 
-# --- Core Platform Endpoints ---
-
-@app.get("/")
-def read_root():
-    return {
-        "platform": "NightVibe India API",
-        "status": "ONLINE",
-        "timestamp": datetime.datetime.utcnow().isoformat(),
-        "escrow_engine": "ACTIVE (18% GST + 2% TDS Sec 194H Automated)",
-        "security": "HMAC-SHA256 30s Dynamic TOTP Verified"
-    }
-
-@app.get("/api/events")
-def get_events():
-    return DB_STATE["events"]
-
-@app.get("/api/venues")
-def get_venues():
-    return DB_STATE["venues"]
-
-@app.get("/api/promoters")
-def get_promoters():
-    return DB_STATE["promoters"]
-
-@app.post("/api/bids/publish")
-def publish_bid(req: PublishBidRequest):
+@app.post("/api/checkout/create-booking")
+def create_booking(req: CreateBookingRequest, user: Dict[str, Any] = Depends(current_user)):
     event = next((e for e in DB_STATE["events"] if e["id"] == req.eventId), None)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+        
+    bids = event.get("bids", [])
+    bid = next((b for b in bids if b["id"] == req.prBidId), bids[0] if bids else None)
     
-    # Enforce Floor Price set by Club Owner
-    if req.price < event.get("floorPrice", 1000):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Bid price ₹{req.price} violates venue floor price ₹{event.get('floorPrice')}"
-        )
-    
-    new_bid = {
-        "id": f"bid_{uuid.uuid4().hex[:8]}",
-        "prId": req.promoterId,
-        "price": req.price,
-        "perks": req.perks,
-        "notes": req.notes,
-        "createdAt": datetime.datetime.utcnow().isoformat()
-    }
-    event.setdefault("bids", []).append(new_bid)
-    return {"status": "SUCCESS", "bid": new_bid}
-
-@app.post("/api/passes/create-checkout")
-def create_checkout(req: CreateBookingRequest):
-    event = next((e for e in DB_STATE["events"] if e["id"] == req.eventId), None)
-    if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
-    
-    bid = next((b for b in event.get("bids", []) if b["id"] == req.prBidId), None)
-    unit_price = bid["price"] if bid else event["basePrice"]
-    total_pax = req.maleCount + req.femaleCount
-    
+    total_pax = req.maleCount + req.femaleCount + (req.coupleCount * 2)
     if total_pax <= 0:
-        raise HTTPException(status_code=400, detail="Party headcount must be at least 1")
+        raise HTTPException(status_code=400, detail="Headcount must be at least 1 person")
+    if total_pax > 12:
+        raise HTTPException(status_code=400, detail="Maximum 12 pax per pass. Contact VIP Table host for larger groups.")
+        
+    unit_price = bid["price"] if bid else event["basePrice"]
     
-    subtotal = unit_price * total_pax
+    # 3-Way Tier Multipliers: Male 1.0x, Female 0.6x, Couple 1.5x (per couple = 2 pax)
+    male_subtotal = req.maleCount * unit_price
+    female_subtotal = req.femaleCount * int(round(unit_price * 0.6))
+    couple_subtotal = req.coupleCount * int(round(unit_price * 1.5))
+    
+    subtotal = male_subtotal + female_subtotal + couple_subtotal
     platform_fee = int(round(subtotal * 0.035)) + 40
     total_amount = subtotal + platform_fee
     
-    # Split Calculations:
-    # 1. Promoter Commission: 15% of subtotal
-    # 2. Club Gross Revenue: 85% of subtotal
-    promoter_payout = int(round(subtotal * 0.15))
-    club_payout = subtotal - promoter_payout
+    # Aligned Value-Driven PR Commission Calculation
+    promoter = next((p for p in DB_STATE["promoters"] if p["id"] == (bid["prId"] if bid else "")), None)
+    cap = event.get("commissionCap", 300)
+    trust_multiplier = 0.7 + 0.6 * ((promoter.get("showUpRate", 85) if promoter else 85) / 100.0)
     
-    # High entropy 80-bit secure ticket ID
+    base_part = cap * 0.55
+    discount_per_pax = max(0, event["basePrice"] - unit_price)
+    discount_penalty = discount_per_pax * 0.25
+    off_peak_bonus = cap * 0.35 if event.get("isOffPeak", False) else 0
+    
+    raw_comm = (base_part + off_peak_bonus - discount_penalty) * trust_multiplier
+    pr_comm_per_pax = int(round(min(cap, max(150, raw_comm))))
+    total_pr_commission = pr_comm_per_pax * total_pax
+    venue_payout = max(0, subtotal - total_pr_commission)
+    
+    # 80-bit Cryptographically Secure Server-Issued Ticket ID
     ticket_id = generate_ticket_id()
+    pass_salt = secrets.token_hex(8)
     
     new_booking = {
         "id": ticket_id,
         "eventId": req.eventId,
         "venueId": event["venueId"],
         "prId": bid["prId"] if bid else "direct",
+        "guestName": req.guestName or user.get("metadata", {}).get("name", "Guest User"),
+        "guestPhone": user.get("sub", req.guestPhone),
         "maleCount": req.maleCount,
         "femaleCount": req.femaleCount,
+        "coupleCount": req.coupleCount,
         "pax": total_pax,
         "unitPrice": unit_price,
         "subtotal": subtotal,
         "platformFee": platform_fee,
         "totalAmount": total_amount,
-        "promoterPayout": promoter_payout,
-        "clubPayout": club_payout,
-        "status": "ACTIVE",
+        "promoterPayout": total_pr_commission,
+        "clubPayout": venue_payout,
+        "salt": pass_salt,
+        "status": "PENDING_PAYMENT", # Gated until Razorpay webhook confirms payment
         "escrowStatus": "HELD_IN_ESCROW",
         "createdAt": datetime.datetime.utcnow().isoformat()
     }
@@ -285,64 +268,102 @@ def create_checkout(req: CreateBookingRequest):
         "status": "SUCCESS",
         "booking": new_booking,
         "razorpay_order": {
-            "order_id": f"order_{uuid.uuid4().hex[:10]}",
+            "order_id": f"order_{uuid.uuid4().hex[:12]}",
             "amount_paise": total_amount * 100,
             "currency": "INR"
         }
     }
 
-@app.post("/api/passes/verify-qr-totp")
-def verify_gate_qr(req: ScanTicketRequest):
+# --- TWO-PHASE GATE ADMISSION & SCANNER ENDPOINTS ---
+
+@app.post("/api/gate/validate")
+def gate_validate(req: ScanTicketRequest, staff_user: Dict[str, Any] = Depends(current_user)):
+    """
+    Phase 1: Validates cryptographic pass authenticity, venue match, and burns nonce.
+    Moves ZERO money. Proves pass is genuine.
+    """
     booking = next((b for b in DB_STATE["bookings"] if b["id"] == req.ticketId), None)
     if not booking:
-        return {"status": "INVALID", "reason": "Ticket ID not found in system"}
+        return {"status": "INVALID", "reason": "Unknown Ticket ID"}
     
+    if booking["venueId"] != req.venueId:
+        return {"status": "WRONG_VENUE", "reason": "Ticket is for a different venue"}
+    
+    if booking["status"] == "PENDING_PAYMENT":
+        return {"status": "UNPAID", "reason": "Payment not captured. Do not admit."}
+        
     if booking["status"] == "ADMITTED":
         return {"status": "ALREADY_USED", "reason": f"Pass already admitted at {booking.get('scannedAt')}"}
     
-    if booking["venueId"] != req.venueId:
-        return {"status": "WRONG_VENUE", "reason": "Pass is not authorized for this club location"}
-    
-    # Cryptographic HMAC-SHA256 Signature Verification (Fixes S6 vulnerability)
-    is_signature_valid = verify_totp_token(
+    if booking["status"] == "REJECTED":
+        return {"status": "REJECTED", "reason": f"Pass rejected at door: {booking.get('rejectReason')}"}
+        
+    # Verify HMAC-SHA256 Token
+    derived_secret = pass_secret(booking["id"], booking.get("salt", "nv_salt"))
+    is_valid_sig = verify_totp_token(
         ticket_id=req.ticketId,
         provided_nonce=req.totpNonce,
         provided_signature=req.signature,
-        secret_key=SECRET_MASTER_KEY
+        secret_bytes=derived_secret
     )
     
-    if not is_signature_valid:
+    # Fallback to master key for legacy/sandbox tokens
+    if not is_valid_sig:
+        is_valid_sig = verify_totp_token(
+            ticket_id=req.ticketId,
+            provided_nonce=req.totpNonce,
+            provided_signature=req.signature,
+            secret_bytes=PASS_HMAC_KEY.encode('utf-8')
+        )
+        
+    if not is_valid_sig:
         return {
             "status": "INVALID_SIGNATURE",
-            "reason": "Cryptographic HMAC signature mismatch or expired QR token. Fraud attempt prevented."
+            "reason": "Cryptographic signature mismatch or expired token (>60s). Anti-screenshot lock triggered."
         }
+        
+    # Single-use nonce burn: Prevents replay inside the active live window
+    nonce_key = f"{req.ticketId}:{req.totpNonce}"
+    if nonce_key in DB_STATE["nonce_burn"]:
+        return {"status": "REPLAYED", "reason": "This exact QR token was already presented. Replay denied."}
+    DB_STATE["nonce_burn"].add(nonce_key)
     
+    booking["status"] = "VALIDATED"
     return {
-        "status": "ACTIVE",
+        "status": "VALIDATED",
         "booking": booking,
-        "message": "HMAC-SHA256 Token Validated Successfully. Ready to Admit & Release Escrow."
+        "message": "Pass Authenticated. Ready for Door Staff Admission."
     }
 
-@app.post("/api/escrow/settle-admission")
-def settle_admission(ticketId: str):
-    booking = next((b for b in DB_STATE["bookings"] if b["id"] == ticketId), None)
+@app.post("/api/gate/admit")
+def gate_admit(req: GateAdmitRequest, staff_user: Dict[str, Any] = Depends(require_role("owner"))):
+    """
+    Phase 2: Human door staff grants physical entry.
+    Settle escrow, log staff ID, and credit PR wallet.
+    """
+    require_venue_staff(req.venueId, staff_user)
+    
+    booking = next((b for b in DB_STATE["bookings"] if b["id"] == req.ticketId), None)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-    
-    if booking["status"] == "ADMITTED":
-        raise HTTPException(status_code=400, detail="Booking is already settled and admitted")
-    
-    # 1. Update Booking State
+        
+    if booking["status"] not in ["VALIDATED", "ACTIVE"]:
+        raise HTTPException(status_code=400, detail=f"Cannot admit pass in state '{booking['status']}'")
+        
+    # Mark Admitted
+    now_str = datetime.datetime.utcnow().strftime("%I:%M %p")
     booking["status"] = "ADMITTED"
     booking["escrowStatus"] = "SETTLED"
-    booking["scannedAt"] = datetime.datetime.utcnow().strftime("%I:%M %p")
+    booking["scannedAt"] = now_str
+    booking["scannedBy"] = staff_user.get("sub", "door_manager")
     
-    # 2. Settle Promoter Commission (TDS 2% deduction under Sec 194H for tech brokerage)
+    # Settle PR Commission with 2% Section 194H TDS
     promoter = next((p for p in DB_STATE["promoters"] if p["id"] == booking["prId"]), None)
     if promoter:
-        gross = booking["promoterPayout"]
-        tds_2pct = int(round(gross * 0.02)) # 2% TDS under Section 194H
-        net_pr = gross - tds_2pct
+        gross_pr = booking["promoterPayout"]
+        tds_2pct = int(round(gross_pr * 0.02))
+        net_pr = gross_pr - tds_2pct
+        
         promoter["walletInr"] = promoter.get("walletInr", 0) + net_pr
         promoter["conversions"] = promoter.get("conversions", 0) + booking["pax"]
         
@@ -351,30 +372,87 @@ def settle_admission(ticketId: str):
             "bookingId": booking["id"],
             "recipientType": "PROMOTER",
             "recipientId": promoter["id"],
-            "grossInr": gross,
+            "grossInr": gross_pr,
             "tds2Pct": tds_2pct,
             "netPayoutInr": net_pr,
             "status": "SETTLED_INSTANT_UPI",
             "timestamp": datetime.datetime.utcnow().isoformat()
         })
-    
+        
     return {
-        "status": "SUCCESS",
-        "message": "Guest Entry Granted. Escrow settled instantly via UPI routing.",
+        "status": "ADMITTED",
+        "message": "Guest Admitted. Escrow settled with T+1 UPI routing.",
         "booking": booking
     }
+
+@app.post("/api/gate/reject")
+def gate_reject(req: GateRejectRequest, staff_user: Dict[str, Any] = Depends(require_role("owner"))):
+    """
+    Records door rejection with mandatory reason and optional timestamped photo evidence
+    """
+    require_venue_staff(req.venueId, staff_user)
+    
+    booking = next((b for b in DB_STATE["bookings"] if b["id"] == req.ticketId), None)
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    booking["status"] = "REJECTED"
+    booking["escrowStatus"] = "REFUNDED"
+    booking["rejectReason"] = req.reason
+    booking["rejectPhotoUrl"] = req.photoEvidenceUrl
+    booking["scannedAt"] = datetime.datetime.utcnow().strftime("%I:%M %p")
+    booking["scannedBy"] = staff_user.get("sub", "door_manager")
+    
+    return {
+        "status": "REJECTED",
+        "message": "Pass marked as rejected at gate. Escrow refund triggered.",
+        "booking": booking
+    }
+
+# --- PR Bidding Endpoints ---
+
+@app.post("/api/bids/publish")
+def publish_bid(req: PublishBidRequest, user: Dict[str, Any] = Depends(require_role("pr"))):
+    # Enforce that caller only publishes as their own promoter identity
+    caller_pr_id = user.get("metadata", {}).get("prId")
+    if caller_pr_id and caller_pr_id != req.promoterId:
+        raise HTTPException(status_code=403, detail="Cannot publish bids on behalf of another promoter")
+        
+    event = next((e for e in DB_STATE["events"] if e["id"] == req.eventId), None)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    if req.price < event["floorPrice"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Bid price ₹{req.price} violates venue floor price of ₹{event['floorPrice']}"
+        )
+        
+    new_bid = {
+        "id": f"bid_{uuid.uuid4().hex[:6]}",
+        "prId": req.promoterId,
+        "price": req.price,
+        "perks": req.perks,
+        "notes": req.notes,
+        "createdAt": datetime.datetime.utcnow().isoformat()
+    }
+    
+    event.setdefault("bids", []).append(new_bid)
+    return {"status": "SUCCESS", "bid": new_bid}
+
+# --- Razorpay Payment Webhook ---
 
 @app.post("/api/webhooks/razorpay")
 async def razorpay_webhook(request: Request, x_razorpay_signature: Optional[str] = Header(None)):
     body_bytes = await request.body()
     webhook_secret = os.getenv("RAZORPAY_WEBHOOK_SECRET", "test_webhook_secret_key_2026")
     
-    # Validate Webhook HMAC signature
-    if not verify_razorpay_signature(body_bytes, x_razorpay_signature or "", webhook_secret):
-        # In dev mode allow if test secret
+    is_valid = verify_razorpay_signature(body_bytes, x_razorpay_signature or "", webhook_secret)
+    if not is_valid:
+        # Strict fail-closed in production
         if os.getenv("ENV") == "production":
             raise HTTPException(status_code=400, detail="Invalid Razorpay Webhook Signature")
-    
+            
     import json
     payload = json.loads(body_bytes.decode('utf-8')) if body_bytes else {}
     event_type = payload.get("event")
@@ -382,6 +460,41 @@ async def razorpay_webhook(request: Request, x_razorpay_signature: Optional[str]
     if event_type == "payment.captured":
         payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
         order_id = payment_entity.get("order_id")
+        
+        # Locate booking and transition PENDING_PAYMENT -> ACTIVE
+        booking = next((b for b in DB_STATE["bookings"] if b.get("razorpayOrderId") == order_id), None)
+        if booking:
+            booking["status"] = "ACTIVE"
+            booking["razorpayPaymentId"] = payment_entity.get("id")
+            return {"status": "ACTIVATED", "bookingId": booking["id"]}
+            
         return {"status": "PROCESSED", "order_id": order_id}
-    
+        
     return {"status": "IGNORED"}
+
+# --- Venue POS Bottle Spend Webhook ---
+
+@app.post("/api/webhooks/pos-spend")
+def pos_spend_webhook(req: TableSpendWebhookRequest):
+    """
+    Webhook ingested from Venue POS (Petpooja / Posist) for post-door bottle & F&B spend attribution
+    """
+    spend_record = {
+        "id": f"spend_{uuid.uuid4().hex[:8]}",
+        "bookingId": req.bookingId,
+        "venueId": req.venueId,
+        "fnbInr": req.fnbInr,
+        "bottleInr": req.bottleInr,
+        "posBillId": req.posBillId,
+        "timestamp": datetime.datetime.utcnow().isoformat()
+    }
+    DB_STATE["table_spends"].append(spend_record)
+    
+    # Credit promoter bottle attribution
+    booking = next((b for b in DB_STATE["bookings"] if b["id"] == req.bookingId), None)
+    if booking:
+        promoter = next((p for p in DB_STATE["promoters"] if p["id"] == booking["prId"]), None)
+        if promoter:
+            promoter["bottleSpendAttributed"] = promoter.get("bottleSpendAttributed", 0) + req.bottleInr
+            
+    return {"status": "RECORDED", "spend": spend_record}

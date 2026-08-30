@@ -37,7 +37,7 @@ export const OwnerView = () => {
   const venue = venues.find((v) => v.id === activeOwnerVenueId) || venues[0];
   const venueEvents = events.filter((e) => e.venueId === venue.id);
   const venueBookings = bookings.filter((b) => b.venueId === venue.id);
-  const venueTransactions = transactions.filter((t) => t.venueName?.includes(venue.name.split(' ')[0]));
+  const venueTransactions = transactions.filter((t) => t.venueId === venue.id || t.recipientId === venue.id || t.venueName?.includes(venue.name.split(' ')[0]));
 
   // Active Tab: 'scanner' | 'dashboard' | 'events' | 'ledger'
   const [activeTab, setActiveTab] = useState('scanner');
@@ -45,7 +45,7 @@ export const OwnerView = () => {
   // Scanner State
   const [scannedTicketId, setScannedTicketId] = useState('');
   const [scannedResult, setScannedResult] = useState(null);
-  const [rejectionReason, setRejectionReason] = useState('Dress code violation');
+  const [rejectionReason, setRejectionReason] = useState('Dress code / Stag balance violation');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
 
@@ -65,7 +65,7 @@ export const OwnerView = () => {
   // Calculate Metrics
   const totalCheckedIn = venueBookings.filter((b) => b.status === 'CHECKED_IN').reduce((acc, b) => acc + b.pax, 0);
   const totalExpected = venueBookings.reduce((acc, b) => acc + b.pax, 0);
-  const occupancyPercent = Math.min(100, Math.round((venue.currentOccupancy / venue.licensedCapacity) * 100));
+  const occupancyPercent = Math.min(100, Math.round((venue.currentOccupancy / (venue.licensedCapacity || venue.capacity || 500)) * 100));
 
   // PR Leaderboard
   const prLeaderboard = promoters
@@ -83,26 +83,35 @@ export const OwnerView = () => {
     })
     .sort((a, b) => b.paxBrought - a.paxBrought);
 
-  // Handle Manual/Simulated Scan
+  // Handle Manual/Simulated Scan with Strict Venue Scoping
   const handleInspectTicket = (ticketIdToScan) => {
-    const targetId = ticketIdToScan || scannedTicketId.trim();
+    const targetId = (ticketIdToScan || scannedTicketId).trim();
     if (!targetId) {
       showToast('Please select or type a Ticket Pass ID', 'warning');
       return;
     }
 
-    const found = bookings.find(
+    const found = venueBookings.find(
       (b) => b.id === targetId || b.qrToken === targetId || targetId.includes(b.id)
     );
 
-    if (!found) {
-      showToast('❌ Invalid Pass: QR Token not found in manifest', 'error');
-      setScannedResult(null);
+    if (found) {
+      setScannedResult(found);
+      setScannedTicketId(found.id);
+      navigator.vibrate?.([12, 40, 12]);
       return;
     }
 
-    setScannedResult(found);
-    setScannedTicketId(found.id);
+    // Check if pass belongs to another club (Cross-tenant check)
+    const otherClubPass = bookings.find((b) => b.id === targetId || b.qrToken === targetId);
+    if (otherClubPass) {
+      const otherVenue = venues.find(v => v.id === otherClubPass.venueId);
+      showToast(`⚠️ WRONG VENUE: This pass is for ${otherVenue?.name || 'another club'}`, 'error');
+      navigator.vibrate?.([80, 60, 80]);
+    } else {
+      showToast('❌ Invalid Pass: QR Token not found in manifest', 'error');
+    }
+    setScannedResult(null);
   };
 
   // Perform Admission Action

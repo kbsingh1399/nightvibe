@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   X,
@@ -18,34 +18,54 @@ import confetti from 'canvas-confetti';
 
 export const EventDetailModal = ({ event, isOpen, onClose, onBookingSuccess }) => {
   const { venues, promoters, bookTicket } = useApp();
-  
+
+  // ✅ ALL Hooks unconditionally at top of component
+  const [selectedBidId, setSelectedBidId] = useState(null);
+  const [maleCount, setMaleCount] = useState(1);
+  const [femaleCount, setFemaleCount] = useState(0);
+  const [coupleCount, setCoupleCount] = useState(1);
+  const [paymentStep, setPaymentStep] = useState('select');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('UPI_GPAY');
+
+  useEffect(() => {
+    if (event?.bids?.length) {
+      setSelectedBidId(event.bids[0].id);
+    }
+  }, [event?.id]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // ✅ Conditional return AFTER all hooks
   if (!isOpen || !event) return null;
 
   const venue = venues.find((v) => v.id === event.venueId) || venues[0];
-
-  // Selected PR Bid
-  const [selectedBidId, setSelectedBidId] = useState(event.bids[0]?.id || null);
-  
-  // Group Headcount
-  const [maleCount, setMaleCount] = useState(1);
-  const [femaleCount, setFemaleCount] = useState(1);
-  const [paymentStep, setPaymentStep] = useState('select'); // 'select' | 'payment'
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('UPI_GPAY');
-
-  const selectedBid = event.bids.find((b) => b.id === selectedBidId) || event.bids[0];
+  const bidsSorted = [...(event.bids || [])].sort((a, b) => a.price - b.price);
+  const selectedBid = bidsSorted.find((b) => b.id === selectedBidId) || bidsSorted[0];
   const selectedPR = promoters.find((p) => p.id === selectedBid?.prId) || promoters[0];
 
-  const totalPax = maleCount + femaleCount;
-  const unitPrice = selectedBid ? selectedBid.price : event.basePrice;
-  const subtotal = unitPrice * totalPax;
-  const platformFee = Math.round(subtotal * 0.035) + 40;
+  const totalPax = maleCount + femaleCount + (coupleCount * 2);
+  const baseUnitPrice = selectedBid ? selectedBid.price : event.basePrice;
+
+  // 3-Way Per-Tier Pricing
+  const malePrice = baseUnitPrice;
+  const femalePrice = Math.round(baseUnitPrice * 0.6);
+  const couplePrice = Math.round(baseUnitPrice * 1.5);
+
+  const subtotal = (maleCount * malePrice) + (femaleCount * femalePrice) + (coupleCount * couplePrice);
+  const platformFee = totalPax > 0 ? Math.round(subtotal * 0.035) + 40 : 0;
   const totalAmount = subtotal + platformFee;
 
-  // Stag policy warning check
-  const isStagHeavy = maleCount > femaleCount;
+  const isStagHeavy = maleCount > (femaleCount + coupleCount * 2);
 
   const handleCheckout = () => {
-    // Trigger confetti animation
     confetti({
       particleCount: 80,
       spread: 70,
@@ -58,7 +78,10 @@ export const EventDetailModal = ({ event, isOpen, onClose, onBookingSuccess }) =
       groupDetails: {
         maleCount,
         femaleCount,
-        guestType: totalPax > 2 ? 'group' : 'couple',
+        coupleCount,
+        subtotal,
+        totalAmount,
+        guestType: coupleCount > 0 ? 'couple' : (totalPax > 1 ? 'group' : 'stag'),
       },
       paymentMethod: selectedPaymentMethod,
     });
@@ -99,44 +122,38 @@ export const EventDetailModal = ({ event, isOpen, onClose, onBookingSuccess }) =
                 <span className="flex items-center gap-1 font-semibold text-pink-400">
                   <MapPin className="w-3.5 h-3.5" /> {venue.name} ({venue.area})
                 </span>
-                <span className="flex items-center gap-1 text-slate-400">
-                  <Clock className="w-3.5 h-3.5" /> {event.date} • {event.time}
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" /> {event.date}
                 </span>
               </div>
             </div>
-
             <div className="text-right">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
-                Official Venue Box Office
-              </span>
-              <span className="text-lg font-bold text-slate-400 line-through">
+              <span className="text-xs text-slate-400 uppercase block">Venue Box Office</span>
+              <span className="text-base font-bold text-slate-400 line-through">
                 ₹{event.basePrice}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Modal Body */}
+        {/* Modal Content */}
         <div className="p-5 sm:p-6 space-y-6">
-          
           {paymentStep === 'select' ? (
             <>
-              {/* Promoters Bidding Section */}
+              {/* PR Bids Comparison Section */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-1.5 font-sans">
-                      <Sparkles className="w-4 h-4 text-amber-400" />
-                      <span>Authorized Promoter Bids ({event.bids.length} Active Offers)</span>
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                      Promoters compete to give you the lowest price and best perks. Choose your preferred PR:
-                    </p>
-                  </div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5 font-sans">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    Authorized Promoter Bids ({event.bids.length} Offers)
+                  </h3>
+                  <span className="text-[11px] text-slate-400">
+                    Floor Price: <span className="text-pink-400 font-bold">₹{event.floorPrice}</span>
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                  {event.bids.map((bid) => {
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {bidsSorted.map((bid) => {
                     const pr = promoters.find((p) => p.id === bid.prId) || promoters[0];
                     const isSelected = selectedBidId === bid.id;
                     const savings = event.basePrice - bid.price;
@@ -145,253 +162,247 @@ export const EventDetailModal = ({ event, isOpen, onClose, onBookingSuccess }) =
                       <div
                         key={bid.id}
                         onClick={() => setSelectedBidId(bid.id)}
-                        className={`p-4 rounded-2xl cursor-pointer transition relative border ${
+                        className={`relative p-3.5 rounded-2xl cursor-pointer transition border ${
                           isSelected
-                            ? 'bg-purple-950/40 border-purple-500 shadow-lg shadow-purple-900/30 ring-1 ring-purple-500'
+                            ? 'bg-purple-950/40 border-purple-500 ring-1 ring-purple-500'
                             : 'bg-white/5 border-white/10 hover:border-white/20'
                         }`}
                       >
-                        {/* Selected Radio Indicator */}
-                        <div className="flex items-start justify-between gap-3 mb-2.5">
-                          <div className="flex items-center gap-2.5">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
                             <img
                               src={pr.avatar}
                               alt={pr.name}
-                              className="w-10 h-10 rounded-xl object-cover ring-1 ring-purple-500/40"
+                              className="w-10 h-10 rounded-xl object-cover ring-1 ring-white/10"
                             />
                             <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-bold text-white">{pr.name}</span>
-                                {pr.verified && (
-                                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                                )}
+                              <div className="text-xs font-bold text-white flex items-center gap-1">
+                                {pr.name}
+                                {pr.verified && <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />}
                               </div>
-                              <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                                <span className="flex items-center gap-0.5 text-amber-400 font-semibold">
-                                  <Star className="w-3 h-3 fill-amber-400" /> {pr.rating}
-                                </span>
-                                <span>•</span>
-                                <span>{pr.conversions}+ check-ins</span>
+                              <div className="flex items-center gap-1.5 text-[10px] text-amber-400">
+                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                <span>{pr.rating}</span>
+                                <span className="text-slate-400">• {pr.showUpRate}% show-up</span>
                               </div>
                             </div>
                           </div>
-
                           <div className="text-right">
-                            <div className="text-lg font-extrabold text-white">
+                            <div className="text-base font-black text-white font-sans">
                               ₹{bid.price}
                             </div>
                             {savings > 0 && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                Save ₹{savings}/pax
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                                Save ₹{savings}
                               </span>
                             )}
                           </div>
                         </div>
 
-                        {/* Perks Included */}
-                        <div className="space-y-1 pt-1 border-t border-white/5">
-                          {bid.perks.map((pId) => {
-                            const perkObj = event.approvedPerks?.find((ap) => ap.id === pId);
+                        {/* Bundled Perks */}
+                        <div className="space-y-1 pt-2 border-t border-white/5">
+                          {bid.perks.map((perkId) => {
+                            const perkObj = event.approvedPerks?.find((p) => p.id === perkId);
                             return (
                               <div
-                                key={pId}
-                                className="flex items-center gap-1.5 text-[11px] text-purple-300 font-medium"
+                                key={perkId}
+                                className="flex items-center gap-1.5 text-[11px] text-purple-300"
                               >
-                                <Gift className="w-3 h-3 text-pink-400 flex-shrink-0" />
-                                <span>{perkObj ? perkObj.name : pId}</span>
+                                <Gift className="w-3 h-3 shrink-0" />
+                                <span>{perkObj ? perkObj.name : perkId}</span>
                               </div>
                             );
                           })}
                         </div>
-
-                        <p className="text-[10px] text-slate-400 italic mt-2">
-                          "{bid.notes}"
-                        </p>
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Group Customization & Headcount */}
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-4">
-                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-purple-400" />
-                  <span>Customize Your Party Size</span>
-                </h4>
+              {/* 3-Way Headcount Steppers */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  <span>Headcount Customization</span>
+                  <span className="text-[10px] text-teal-400 font-mono">44px Touch Targets</span>
+                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Male Count */}
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-black/30 border border-white/5">
-                    <div>
-                      <span className="text-xs font-semibold text-slate-200 block">Stags / Males</span>
-                      <span className="text-[10px] text-slate-400">Must follow dress code</span>
-                    </div>
-                    <div className="flex items-center gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Male Stag */}
+                  <div className="p-3 rounded-2xl bg-black/40 border border-white/10 space-y-2">
+                    <span className="text-xs font-bold text-white block">🕺 Male Stag</span>
+                    <span className="text-[10px] text-slate-400">₹{malePrice}/pass</span>
+                    <div className="flex items-center justify-between pt-1">
                       <button
-                        onClick={() => setMaleCount(Math.max(0, maleCount - 1))}
-                        className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center"
-                      >
-                        -
-                      </button>
-                      <span className="text-sm font-bold text-white w-4 text-center">{maleCount}</span>
+                        type="button"
+                        onClick={() => {
+                          setMaleCount(Math.max(0, maleCount - 1));
+                          navigator.vibrate?.(8);
+                        }}
+                        className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-lg flex items-center justify-center transition"
+                      >−</button>
+                      <span className="text-base font-bold text-white font-mono">{maleCount}</span>
                       <button
-                        onClick={() => setMaleCount(maleCount + 1)}
-                        className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center"
-                      >
-                        +
-                      </button>
+                        type="button"
+                        onClick={() => {
+                          setMaleCount(maleCount + 1);
+                          navigator.vibrate?.(8);
+                        }}
+                        className="w-11 h-11 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold text-lg flex items-center justify-center transition"
+                      >+</button>
                     </div>
                   </div>
 
-                  {/* Female Count */}
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-black/30 border border-white/5">
-                    <div>
-                      <span className="text-xs font-semibold text-slate-200 block">Females / Couples</span>
-                      <span className="text-[10px] text-slate-400">Priority guestlist</span>
+                  {/* Female Stag */}
+                  <div className="p-3 rounded-2xl bg-black/40 border border-white/10 space-y-2">
+                    <span className="text-xs font-bold text-white block">💃 Female Stag</span>
+                    <span className="text-[10px] text-pink-400">₹{femalePrice} (40% off)</span>
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFemaleCount(Math.max(0, femaleCount - 1));
+                          navigator.vibrate?.(8);
+                        }}
+                        className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-lg flex items-center justify-center transition"
+                      >−</button>
+                      <span className="text-base font-bold text-white font-mono">{femaleCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFemaleCount(femaleCount + 1);
+                          navigator.vibrate?.(8);
+                        }}
+                        className="w-11 h-11 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-bold text-lg flex items-center justify-center transition"
+                      >+</button>
                     </div>
-                    <div className="flex items-center gap-3">
+                  </div>
+
+                  {/* Couple */}
+                  <div className="p-3 rounded-2xl bg-black/40 border border-teal-500/30 bg-teal-950/20 space-y-2">
+                    <span className="text-xs font-bold text-teal-200 block">👫 Couple (2 Pax)</span>
+                    <span className="text-[10px] text-amber-300">₹{couplePrice}/duo</span>
+                    <div className="flex items-center justify-between pt-1">
                       <button
-                        onClick={() => setFemaleCount(Math.max(0, femaleCount - 1))}
-                        className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center"
-                      >
-                        -
-                      </button>
-                      <span className="text-sm font-bold text-white w-4 text-center">{femaleCount}</span>
+                        type="button"
+                        onClick={() => {
+                          setCoupleCount(Math.max(0, coupleCount - 1));
+                          navigator.vibrate?.(8);
+                        }}
+                        className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-lg flex items-center justify-center transition"
+                      >−</button>
+                      <span className="text-base font-bold text-white font-mono">{coupleCount}</span>
                       <button
-                        onClick={() => setFemaleCount(femaleCount + 1)}
-                        className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center"
-                      >
-                        +
-                      </button>
+                        type="button"
+                        onClick={() => {
+                          setCoupleCount(coupleCount + 1);
+                          navigator.vibrate?.(8);
+                        }}
+                        className="w-11 h-11 rounded-xl bg-teal-500 hover:bg-teal-400 text-black font-bold text-lg flex items-center justify-center transition"
+                      >+</button>
                     </div>
                   </div>
                 </div>
 
                 {isStagHeavy && (
-                  <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
-                    <Info className="w-4 h-4 flex-shrink-0" />
-                    <span>
-                      Notice: Venue enforces a 1:1 couple ratio on peak hours. Your PR ({selectedPR.name}) will meet your group at the VIP desk for manual stag clearance.
-                    </span>
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-2 text-[11px] text-amber-300">
+                    <Info className="w-3.5 h-3.5 shrink-0" />
+                    <span>Club Door Policy: Stag entries are subject to venue profile screening.</span>
                   </div>
                 )}
               </div>
 
-              {/* Venue Rules & Disclaimers */}
-              <div className="text-[11px] text-slate-400 space-y-1 px-1">
-                <p>👗 <span className="font-semibold text-slate-300">Dress Code:</span> {venue.dressCode}</p>
-                <p>🔞 <span className="font-semibold text-slate-300">Age Limit:</span> {venue.ageLimit} • Physical Government ID mandatory.</p>
-              </div>
-
-              {/* Summary Bar & Next Button */}
-              <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-4">
+              {/* Pricing Footer */}
+              <div className="pt-3 border-t border-white/10 flex items-center justify-between">
                 <div>
-                  <span className="text-[11px] text-slate-400 block">Total for {totalPax} Guests</span>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-white font-sans">
-                      ₹{totalAmount}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-normal">
-                      (incl. ₹{platformFee} fee)
-                    </span>
+                  <span className="text-[10px] text-slate-400 block">Total for {totalPax} Guests</span>
+                  <div className="text-xl font-black text-white font-sans">
+                    ₹{totalAmount} <span className="text-[10px] text-slate-400 font-normal">(incl. ₹{platformFee} fee)</span>
                   </div>
                 </div>
-
                 <button
                   disabled={totalPax === 0}
                   onClick={() => setPaymentStep('payment')}
-                  className="px-8 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white text-sm font-bold shadow-xl shadow-purple-600/30 transition flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 transition"
                 >
-                  <span>Proceed to One-Tap UPI</span>
+                  <span>Proceed to UPI Checkout</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </>
           ) : (
-            /* Step 2: Instant Razorpay / UPI Checkout Simulation */
-            <div className="space-y-6">
-              <div>
-                <button
-                  onClick={() => setPaymentStep('select')}
-                  className="text-xs text-purple-400 hover:underline mb-2 inline-block font-medium"
-                >
-                  ← Back to Bids & Group selection
-                </button>
-                <h3 className="text-lg font-bold text-white font-sans">
-                  Complete Booking with Instant UPI / Cards
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Zero custody split: Your ₹{subtotal - (selectedBid ? selectedBid.price * 0.2 : 0)} goes directly to {venue.name} bank account.
-                </p>
-              </div>
+            /* Payment Screen */
+            <div className="space-y-5">
+              <button
+                onClick={() => setPaymentStep('select')}
+                className="text-xs text-purple-400 hover:underline"
+              >
+                ← Back to Bids & Headcount
+              </button>
 
-              {/* Bill Breakdown */}
               <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-xs">
                 <div className="flex justify-between text-slate-300">
-                  <span>{event.title} ({totalPax} Pax × ₹{unitPrice})</span>
+                  <span>{event.title} ({totalPax} Pax)</span>
                   <span className="font-semibold text-white">₹{subtotal}</span>
                 </div>
+                {maleCount > 0 && (
+                  <div className="flex justify-between text-slate-400 pl-2 text-[11px]">
+                    <span>• {maleCount} × Male Stag</span>
+                    <span>₹{maleCount * malePrice}</span>
+                  </div>
+                )}
+                {femaleCount > 0 && (
+                  <div className="flex justify-between text-slate-400 pl-2 text-[11px]">
+                    <span>• {femaleCount} × Female Stag</span>
+                    <span>₹{femaleCount * femalePrice}</span>
+                  </div>
+                )}
+                {coupleCount > 0 && (
+                  <div className="flex justify-between text-slate-400 pl-2 text-[11px]">
+                    <span>• {coupleCount} × Couple (2 Pax)</span>
+                    <span>₹{coupleCount * couplePrice}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-400">
-                  <span>Promoter Discount Applied ({selectedPR.name})</span>
-                  <span className="text-emerald-400 font-semibold">-₹{(event.basePrice - unitPrice) * totalPax}</span>
-                </div>
-                <div className="flex justify-between text-slate-400">
-                  <span>Platform Gateway & 256-bit Dynamic QR Fee</span>
+                  <span>Platform & 256-Bit Escrow Security Fee</span>
                   <span>₹{platformFee}</span>
                 </div>
                 <div className="pt-2 border-t border-white/10 flex justify-between text-sm font-bold text-white">
                   <span>Total Amount Payable</span>
-                  <span className="text-lg gradient-text-purple">₹{totalAmount}</span>
+                  <span className="text-base text-pink-400">₹{totalAmount}</span>
                 </div>
               </div>
 
-              {/* Payment Methods */}
-              <div className="space-y-2.5">
-                <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Select Fast UPI Gateway
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  {[
-                    { id: 'UPI_GPAY', name: 'Google Pay', icon: '🟢' },
-                    { id: 'UPI_PHONEPE', name: 'PhonePe', icon: '🟣' },
-                    { id: 'UPI_PAYTM', name: 'Paytm UPI', icon: '🔵' },
-                    { id: 'CARDS', name: 'Credit / Debit', icon: '💳' },
-                  ].map((method) => (
-                    <button
-                      key={method.id}
-                      onClick={() => setSelectedPaymentMethod(method.id)}
-                      className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 transition text-xs font-semibold ${
-                        selectedPaymentMethod === method.id
-                          ? 'bg-purple-600/30 border-purple-500 text-white shadow-lg'
-                          : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <span className="text-xl">{method.icon}</span>
-                      <span>{method.name}</span>
-                    </button>
-                  ))}
-                </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {[
+                  { id: 'UPI_GPAY', label: 'Google Pay (UPI)' },
+                  { id: 'UPI_PHONEPE', label: 'PhonePe (UPI)' },
+                  { id: 'UPI_PAYTM', label: 'Paytm UPI' },
+                  { id: 'CARDS', label: 'Cards / NetBanking' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setSelectedPaymentMethod(m.id)}
+                    className={`p-3 rounded-xl border text-left flex items-center justify-between transition ${
+                      selectedPaymentMethod === m.id
+                        ? 'bg-purple-950/40 border-purple-500 text-white'
+                        : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>{m.label}</span>
+                    {selectedPaymentMethod === m.id && (
+                      <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                    )}
+                  </button>
+                ))}
               </div>
 
-              {/* Escrow Guarantee Alert */}
-              <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-800/40 text-[11px] text-emerald-300 flex items-start gap-2.5">
-                <ShieldCheck className="w-5 h-5 flex-shrink-0 text-emerald-400 mt-0.5" />
-                <div>
-                  <span className="font-bold">100% Door Entry Guarantee:</span> Promoter commission (₹{selectedBid ? Math.max(150, (event.basePrice - selectedBid.price) + 120) * totalPax : 0}) is held in smart escrow and ONLY released when the club bouncer scans your pass at the entrance!
-                </div>
-              </div>
-
-              {/* Action Button */}
-              <div className="pt-2">
-                <button
-                  onClick={handleCheckout}
-                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black text-sm font-extrabold shadow-xl shadow-emerald-500/20 transition flex items-center justify-center gap-2"
-                >
-                  <Zap className="w-5 h-5 fill-black" />
-                  <span>Pay ₹{totalAmount} & Unlock Dynamic QR Pass</span>
-                </button>
-              </div>
+              <button
+                onClick={handleCheckout}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm shadow-xl hover:opacity-95 transition"
+              >
+                Pay ₹{totalAmount} & Unlock Cryptographic Pass →
+              </button>
             </div>
           )}
         </div>
