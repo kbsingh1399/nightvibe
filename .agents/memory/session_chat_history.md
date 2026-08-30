@@ -65,5 +65,19 @@
      - **Authorized Promoter Bids**: 2-column responsive grid with "BEST VALUE PICK" pill, promoter avatars, ratings, discount badges, and perks aligned.
      - **3-Way Party Headcount Steppers**: 3 equal-width columns (Male Stag, Female Stag, Couple), with 44px WCAG compliant touch targets (`-` and `+` buttons), price tags, and live headcount breakdown text.
      - **Pricing Summary Footer**: Real-time calculated subtotal + platform fee (`₹5112`) on the left, gradient checkout CTA (`Proceed to UPI Checkout →`) on the right with smooth horizontal alignment.
-  2. Implemented all Opus 5 recommendations across backend and frontend (`main.py`, `models.py`, `security.py`, `deps.py`, `index.html`, `EventDetailModal.jsx`, `MyPassesModal.jsx`, `OwnerView.jsx`).
-  3. Pushed all updates to remote repository `https://github.com/kbsingh1399/nightvibe.git` on branch `main`.
+## Turn: PR Promoter Perspective Verification & Bug Fixes
+- **User Request:** "Rerun and check if all good from PR perspective"
+- **Actions Executed:**
+  1. Executed autonomous browser verification on `http://127.0.0.1:3000/` across the PR Promoter persona.
+  2. **Bugs Detected & Patched**:
+     - **Babel JSX Parsing**: Fixed unescaped `<` in JSX string literal.
+     - **Context Destructuring**: Added missing `hasJoinedPR` and `setRole` to `PRTalentNetworkView` to prevent runtime crashes when switching perspective.
+     - **Header Navigation**: Made `{ key: 'pr', label: 'PR', icon: '👑' }` permanently available in header role switcher pills for 1-click persona transitions.
+  3. **PR Features Verified**:
+     - **Dynamic Bidding Console**: Real-time price slider, VIP perk toggles, custom pitch note, and floor/box office boundaries.
+     - **Section 194H Compliant Yield Breakdown**: Real-time gross commission, 2% TDS deduction, and net take-home calculation.
+     - **Shareable VIP Referral Link**: One-click clipboard copy + WhatsApp guestlist invite generator.
+     - **POS Table Spend Bonus Tracker**: 5% kickback on tracked bottle service revenue.
+     - **Talent Network & Campaign Navigation**: Clean transitions across `PR Directory` / `Talent Network` and `Campaign Events`.
+  4. Captured full screenshot `pr_bidding_view_full_1788124452447.png`.
+  5. Committed and pushed all changes to `https://github.com/kbsingh1399/nightvibe.git` (commit `1144b44`).

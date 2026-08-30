@@ -2352,56 +2352,60 @@
       if (!isOpen || !event) return null;
 
       return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto" onClick={onClose}>
-          <div className="relative w-full max-w-3xl rounded-3xl glass-panel my-8 shadow-2xl border border-teal-500/30 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md" onClick={onClose}>
+          <div className="relative w-full max-w-2xl sm:max-w-3xl max-h-[92vh] flex flex-col rounded-3xl glass-panel shadow-2xl border border-teal-500/30 overflow-hidden" onClick={(e) => e.stopPropagation()}>
             
-            <div className="relative h-72 sm:h-[400px] w-full overflow-hidden">
-              <img src={event.image} alt={event.title} className="w-full h-full object-cover object-top" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#12141c] via-[#12141c]/60 to-transparent" />
+            {/* Compact Header Hero Image (Pinned Top) */}
+            <div className="relative h-36 sm:h-44 md:h-48 w-full shrink-0 overflow-hidden">
+              <img src={event.image} alt={event.title} className="w-full h-full object-cover object-center" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0c0e18] via-[#0c0e18]/65 to-black/30" />
               
               <button
                 onClick={onClose}
                 aria-label="Close modal"
-                className="absolute top-4 right-4 p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition flex items-center justify-center w-10 h-10 border border-white/10"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 border border-white/15 z-10"
               >
                 ✕
               </button>
 
-              <div className="absolute bottom-4 left-6 right-6 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+              <div className="absolute bottom-3 left-4 right-4 sm:bottom-4 sm:left-6 sm:right-6 flex flex-col sm:flex-row sm:items-end justify-between gap-1 sm:gap-2">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-teal-500/30 text-teal-300 border border-teal-500/40 mb-1.5 inline-block">
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-500/30 text-teal-300 border border-teal-500/40 mb-1 inline-block">
                     {event.genre}
                   </span>
-                  <h2 className="text-xl sm:text-2xl font-black text-white font-sans">{event.title}</h2>
-                  <p className="text-xs text-slate-300 mt-0.5">
-                    📍 {venue.name} ({venue.area}) • ⏰ {event.date}
+                  <h2 className="text-base sm:text-xl md:text-2xl font-black text-white font-sans leading-tight">{event.title}</h2>
+                  <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                    <span>📍 {venue.name} ({venue.area})</span>
+                    <span>•</span>
+                    <span>⏰ {event.date}</span>
                   </p>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 uppercase block">Venue Box Office</span>
-                  <span className="text-base font-bold text-slate-400 line-through">₹{event.basePrice}</span>
+                <div className="text-right shrink-0">
+                  <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase block">Venue Box Office</span>
+                  <span className="text-xs sm:text-sm font-bold text-slate-400 line-through">₹{event.basePrice}</span>
                 </div>
               </div>
             </div>
 
-            <div className="p-5 sm:p-6 space-y-6">
+            {/* Scrollable Middle Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
               {paymentStep === 'select' ? (
                 <>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-sm font-bold text-white flex items-center gap-1.5 font-sans">
+                      <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 font-sans">
                         <span>✨</span>
                         <span>Authorized Promoter Bids ({scoredBids.length} Offers)</span>
                       </h3>
-                      <span className="text-[10px] font-semibold text-teal-300 px-2 py-0.5 rounded-full bg-teal-950/60 border border-teal-500/30">
+                      <span className="text-[9px] sm:text-[10px] font-semibold text-teal-300 px-2 py-0.5 rounded-full bg-teal-950/60 border border-teal-500/30">
                         ⚡ AI Ranked by Value
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 mb-3">
+                    <p className="text-[11px] text-slate-400 mb-2.5">
                       Promoters compete on price, perks, and door priority. Choose your preferred PR offer:
                     </p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                       {scoredBids.map((bid, rankIdx) => {
                         const pr = bid.prData;
                         const isSelected = selectedBidId === bid.id;
@@ -2412,20 +2416,20 @@
                           <div
                             key={bid.id}
                             onClick={() => setSelectedBidId(bid.id)}
-                            className={`relative p-3.5 rounded-2xl cursor-pointer transition border ${
+                            className={`relative p-3 rounded-2xl cursor-pointer transition border ${
                               isSelected
                                 ? 'bg-teal-950/40 border-teal-500 ring-1 ring-teal-500'
                                 : 'bg-white/5 border-white/10 hover:border-white/20'
                             }`}
                           >
                             {isTopPick && (
-                              <span className="absolute -top-2.5 right-3 text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-black shadow-md border border-amber-300">
+                              <span className="absolute -top-2 right-3 text-[8px] sm:text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-black shadow-md border border-amber-300">
                                 🏆 Best Value Pick
                               </span>
                             )}
-                            <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex items-start justify-between gap-2 mb-1.5">
                               <div className="flex items-center gap-2">
-                                <img src={pr.avatar} alt={pr.name} className="w-10 h-10 rounded-xl object-cover ring-1 ring-white/10" />
+                                <img src={pr.avatar} alt={pr.name} className="w-9 h-9 rounded-xl object-cover ring-1 ring-white/10" />
                                 <div>
                                   <div className="text-xs font-bold text-white flex items-center gap-1">
                                     <span>{pr.name}</span>
@@ -2437,7 +2441,7 @@
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className="text-base font-black text-white">₹{bid.price}</div>
+                                <div className="text-sm sm:text-base font-black text-white font-mono">₹{bid.price}</div>
                                 {savings > 0 && (
                                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
                                     Save ₹{savings}
@@ -2446,7 +2450,7 @@
                               </div>
                             </div>
 
-                            <div className="space-y-1 pt-1 border-t border-white/5 text-[11px] text-teal-300">
+                            <div className="space-y-0.5 pt-1.5 border-t border-white/5 text-[10px] sm:text-[11px] text-teal-300">
                               {bid.perks.map((pId) => {
                                 const perkObj = event.approvedPerks?.find((ap) => ap.id === pId);
                                 return (
@@ -2457,7 +2461,7 @@
                                 );
                               })}
                             </div>
-                            <p className="text-[10px] text-slate-400 italic mt-1.5">"{bid.notes}"</p>
+                            <p className="text-[10px] text-slate-400 italic mt-1 line-clamp-1">"{bid.notes}"</p>
                           </div>
                         );
                       })}
@@ -2465,15 +2469,15 @@
                   </div>
 
                   {/* 3-Way Party Headcount Customizer (Male Stag, Female Stag, Couples) */}
-                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
                     <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
                       <span>Party Headcount Customization</span>
                       <span className="text-[10px] font-normal text-teal-400 font-mono">Min 44px WCAG Stepper</span>
                     </h4>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       {/* 1. Male Stag */}
-                      <div className="flex flex-col justify-between p-3 rounded-2xl bg-black/40 border border-white/10 space-y-2">
+                      <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-2xl bg-black/40 border border-white/10 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <div>
                             <span className="text-xs font-bold text-white block">🕺 Male Stag</span>
@@ -2488,7 +2492,7 @@
                           >
                             −
                           </button>
-                          <span className="text-sm font-black text-white w-6 text-center">{maleStagCount}</span>
+                          <span className="text-sm font-black text-white w-6 text-center font-mono">{maleStagCount}</span>
                           <button
                             onClick={() => setMaleStagCount(maleStagCount + 1)}
                             aria-label="Increase male stag count"
@@ -2500,7 +2504,7 @@
                       </div>
 
                       {/* 2. Female Stag */}
-                      <div className="flex flex-col justify-between p-3 rounded-2xl bg-black/40 border border-white/10 space-y-2">
+                      <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-2xl bg-black/40 border border-white/10 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <div>
                             <span className="text-xs font-bold text-white block">💃 Female Stag</span>
@@ -2515,7 +2519,7 @@
                           >
                             −
                           </button>
-                          <span className="text-sm font-black text-white w-6 text-center">{femaleStagCount}</span>
+                          <span className="text-sm font-black text-white w-6 text-center font-mono">{femaleStagCount}</span>
                           <button
                             onClick={() => setFemaleStagCount(femaleStagCount + 1)}
                             aria-label="Increase female stag count"
@@ -2527,7 +2531,7 @@
                       </div>
 
                       {/* 3. Couples */}
-                      <div className="flex flex-col justify-between p-3 rounded-2xl bg-black/40 border border-teal-500/30 bg-teal-950/20 space-y-2">
+                      <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-2xl bg-black/40 border border-teal-500/30 bg-teal-950/20 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <div>
                             <span className="text-xs font-bold text-teal-200 block">👫 Couple (1M+1F)</span>
@@ -2542,7 +2546,7 @@
                           >
                             −
                           </button>
-                          <span className="text-sm font-black text-white w-6 text-center">{coupleCount}</span>
+                          <span className="text-sm font-black text-white w-6 text-center font-mono">{coupleCount}</span>
                           <button
                             onClick={() => setCoupleCount(coupleCount + 1)}
                             aria-label="Increase couple count"
@@ -2564,28 +2568,13 @@
                       </span>
                     </div>
                   </div>
-
-                  {/* Pricing Bar */}
-                  <div className="pt-3 border-t border-white/10 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-slate-400 block">Total for {totalPax} Guests</span>
-                      <div className="text-xl font-black text-white font-sans">
-                        ₹{totalAmount} <span className="text-[10px] text-slate-400 font-normal">(incl. ₹{platformFee} fee)</span>
-                      </div>
-                    </div>
-                    <button
-                      disabled={totalPax === 0}
-                      onClick={() => setPaymentStep('payment')}
-                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:opacity-90 text-white text-xs font-bold shadow-lg"
-                    >
-                      Proceed to UPI Checkout →
-                    </button>
-                  </div>
                 </>
               ) : (
-                <div className="space-y-5">
-                  <button onClick={() => setPaymentStep('select')} className="text-xs text-teal-400 hover:underline">
-                    ← Back to Bids & Headcount
+                /* Payment Screen */
+                <div className="space-y-4">
+                  <button onClick={() => setPaymentStep('select')} className="text-xs text-teal-400 hover:underline flex items-center gap-1">
+                    <span>←</span>
+                    <span>Back to Bids & Headcount</span>
                   </button>
 
                   <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-xs">
@@ -2617,7 +2606,7 @@
                     </div>
                     <div className="pt-2 border-t border-white/10 flex justify-between text-sm font-bold text-white">
                       <span>Total Amount Payable</span>
-                      <span className="text-base gradient-text-cyan">₹{totalAmount}</span>
+                      <span className="text-base gradient-text-cyan font-mono">₹{totalAmount}</span>
                     </div>
                   </div>
 
@@ -2626,11 +2615,11 @@
                       <button
                         key={i}
                         onClick={() => setPaymentMethod(m)}
-                        className={`w-full p-4 rounded-xl flex items-center justify-between transition-colors border ${
+                        className={`w-full p-3 rounded-xl flex items-center justify-between transition-colors border ${
                             paymentMethod === m ? 'bg-teal-600/30 border-teal-500 text-white' : 'bg-white/5 border-white/10 text-slate-400'
                           }`}
                       >
-                        {m}
+                        <span className="truncate">{m}</span>
                       </button>
                     ))}
                   </div>
@@ -2644,6 +2633,27 @@
                 </div>
               )}
             </div>
+
+            {/* Pinned Bottom Action Bar (Always Visible) */}
+            {paymentStep === 'select' && (
+              <div className="shrink-0 p-3 sm:p-4 bg-[#0a0c14]/95 backdrop-blur-md border-t border-white/10 flex items-center justify-between gap-3 z-10">
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Total for {totalPax} Guests</span>
+                  <div className="text-base sm:text-xl font-black text-white font-sans">
+                    ₹{totalAmount} <span className="text-[10px] text-slate-400 font-normal">(incl. ₹{platformFee} fee)</span>
+                  </div>
+                </div>
+                <button
+                  disabled={totalPax === 0}
+                  onClick={() => setPaymentStep('payment')}
+                  className="px-5 sm:px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:opacity-90 disabled:opacity-40 text-black text-xs font-black shadow-lg transition flex items-center gap-1.5"
+                >
+                  <span>Proceed to UPI Checkout</span>
+                  <span>→</span>
+                </button>
+              </div>
+            )}
+
           </div>
         </div>
       );
