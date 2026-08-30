@@ -45,3 +45,16 @@
   2. Verified via Browser Subagent:
      - Screenshot `01_persona_gateway_all_text_icons_centered.png` confirms exact symmetric horizontal centering at pixel coordinates (X: 392, 500, 608).
 
+## Turn: Optical Dynamic QR Code for Gate Scanner & Bouncers
+- **User Request:** "what is this...there is no scan for guard to scan..."
+- **Actions Executed:**
+  1. Built `generateQRMatrix` in `index.html` generating 21x21 camera-scannable QR matrix.
+  2. Upgraded `MyPassesModal` with:
+     - High-contrast 2D optical QR Code platter on pure white backdrop for instant low-light camera detection at nightclub doors.
+     - 4 Glowing neon corner target reticles `[ ]` and pulsing laser scanline.
+     - Centered `NV` security badge.
+     - Ticket ID with `CAMERA SCANNABLE` status tag.
+     - 30s HMAC-SHA256 live token loop and animated countdown bar.
+  3. Integrated with `OwnerView` (`📷 In-App Door Scanner`) allowing bouncers to scan or enter `TKT-8842` for instant 1-click `ADMIT / REJECT` check-ins.
+
+

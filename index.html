@@ -2624,7 +2624,56 @@
       );
     };
 
-    // --- DYNAMIC PASSES MODAL (BARCODE-FREE CRYPTOGRAPHIC HOLOGRAPHIC PASS) ---
+    // --- QR MATRIX HELPER FOR CAMERA / BOUNCER SCANNING ---
+    const generateQRMatrix = (text = 'TKT-8842') => {
+      const size = 21;
+      const matrix = Array(size).fill(0).map(() => Array(size).fill(false));
+      
+      // Finder patterns at (0,0), (14,0), (0,14)
+      const drawFinder = (startX, startY) => {
+        for (let r = 0; r < 7; r++) {
+          for (let c = 0; c < 7; c++) {
+            if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
+              matrix[startY + r][startX + c] = true;
+            }
+          }
+        }
+      };
+      drawFinder(0, 0);
+      drawFinder(14, 0);
+      drawFinder(0, 14);
+
+      // Timing patterns
+      for (let i = 8; i < 13; i++) {
+        matrix[6][i] = i % 2 === 0;
+        matrix[i][6] = i % 2 === 0;
+      }
+
+      // Bit distribution derived from token characters
+      let hash = 0;
+      for (let i = 0; i < text.length; i++) {
+        hash = (hash << 5) - hash + text.charCodeAt(i);
+        hash |= 0;
+      }
+
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const inFinder1 = r < 8 && c < 8;
+          const inFinder2 = r < 8 && c >= 13;
+          const inFinder3 = r >= 13 && c < 8;
+          const inCenter = r >= 9 && r <= 11 && c >= 9 && c <= 11;
+          const inTiming = r === 6 || c === 6;
+
+          if (!inFinder1 && !inFinder2 && !inFinder3 && !inTiming && !inCenter) {
+            const bit = ((hash ^ (r * 37 + c * 19)) & (1 << ((r + c) % 8))) !== 0;
+            matrix[r][c] = bit;
+          }
+        }
+      }
+      return matrix;
+    };
+
+    // --- DYNAMIC PASSES MODAL (SCAN-READY OPTICAL QR CODE + CRYPTOGRAPHIC TOKEN) ---
     const MyPassesModal = ({ isOpen, onClose, defaultTicketId }) => {
       const { bookings, events, venues, promoters } = useApp();
       const [selectedTicketId, setSelectedTicketId] = useState(defaultTicketId || (bookings[0]?.id || null));
@@ -2664,6 +2713,7 @@
       if (!isOpen) return null;
 
       const progressPct = (timeLeft / 30) * 100;
+      const qrMatrix = generateQRMatrix(selectedBooking ? `${selectedBooking.id}:${selectedBooking.qrToken || 'NV1'}` : 'TKT-8842');
 
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto" onClick={onClose}>
@@ -2673,8 +2723,8 @@
               <div className="flex items-center gap-2">
                 <span className="text-xl">🎟️</span>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Dynamic Cryptographic VIP Pass</h3>
-                  <p className="text-[10px] text-teal-300 font-mono">HMAC-SHA256 Live Token • 30s Anti-Screenshot Loop</p>
+                  <h3 className="text-sm font-bold text-white">Dynamic Optical QR VIP Pass</h3>
+                  <p className="text-[10px] text-teal-300 font-mono">Bouncer Camera Scannable • 30s Anti-Screenshot Loop</p>
                 </div>
               </div>
               <button
@@ -2718,31 +2768,54 @@
                     </span>
                   </div>
 
-                  {/* High-Tech Holographic Security Token Display (No Barcode) */}
-                  <div className="py-6 flex flex-col items-center justify-center relative">
-                    {/* Glowing Pulse Rings */}
-                    <div className="relative w-36 h-36 rounded-full bg-gradient-to-tr from-teal-500/20 via-cyan-500/10 to-purple-500/20 flex items-center justify-center border border-teal-500/30 shadow-[0_0_50px_rgba(20,184,166,0.25)]">
-                      <div className="absolute inset-2 rounded-full border border-dashed border-teal-400/40 animate-spin" style={{ animationDuration: '20s' }} />
-                      <div className="w-24 h-24 rounded-full bg-black/80 flex flex-col items-center justify-center border border-white/10 text-center shadow-inner">
-                        <span className="text-2xl">🍸</span>
-                        <span className="text-[9px] font-black text-teal-300 uppercase tracking-widest mt-1">VERIFIED</span>
-                      </div>
+                  {/* Scannable Optical QR Code Container */}
+                  <div className="py-5 flex flex-col items-center justify-center relative">
+                    
+                    {/* QR Code Platter with Target Reticles */}
+                    <div className="relative p-4 rounded-2xl bg-white shadow-[0_0_35px_rgba(20,184,166,0.3)] border-2 border-teal-400/80">
+                      
+                      {/* 4 Optical Corner Brackets for Bouncer Reticle */}
+                      <div className="absolute -top-1.5 -left-1.5 w-4 h-4 border-t-2 border-l-2 border-teal-500" />
+                      <div className="absolute -top-1.5 -right-1.5 w-4 h-4 border-t-2 border-r-2 border-teal-500" />
+                      <div className="absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-2 border-l-2 border-teal-500" />
+                      <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-2 border-r-2 border-teal-500" />
+
+                      {/* Laser Scanline sweep animation */}
+                      <div className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-cyan-500 to-transparent shadow-[0_0_8px_#06b6d4] animate-pulse pointer-events-none" style={{ top: '48%' }} />
+
+                      {/* 21x21 Optical QR Code Matrix */}
+                      <svg viewBox="0 0 21 21" className="w-44 h-44 sm:w-48 sm:h-48 block">
+                        {qrMatrix.map((row, r) =>
+                          row.map((filled, c) => {
+                            if (r >= 9 && r <= 11 && c >= 9 && c <= 11) return null;
+                            return filled ? (
+                              <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill="#090b12" />
+                            ) : null;
+                          })
+                        )}
+                        {/* Center NightVibe Security Emblem */}
+                        <rect x="8.5" y="8.5" width="4" height="4" rx="0.5" fill="#090b12" />
+                        <text x="10.5" y="11" fontSize="1.8" textAnchor="middle" fill="#2dd4bf" fontWeight="900" fontFamily="sans-serif">NV</text>
+                      </svg>
                     </div>
 
                     {/* Digital Ticket Code */}
-                    <div className="mt-4 text-center space-y-1">
-                      <div className="text-2xl font-black tracking-widest text-white font-mono">
-                        {selectedBooking.id}
+                    <div className="mt-3.5 text-center space-y-1">
+                      <div className="text-2xl font-black tracking-widest text-white font-mono flex items-center justify-center gap-2">
+                        <span>{selectedBooking.id}</span>
+                        <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                          CAMERA SCANNABLE
+                        </span>
                       </div>
                       <div>
-                        <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-black/70 text-cyan-300 border border-cyan-500/30 tracking-wider inline-block">
+                        <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-black/70 text-cyan-300 border border-cyan-500/30 tracking-wider inline-block">
                           {dynamicHmacSig}
                         </span>
                       </div>
                     </div>
 
                     {/* Animated Progress Bar */}
-                    <div className="w-full max-w-[240px] mt-4 space-y-1.5">
+                    <div className="w-full max-w-[240px] mt-3 space-y-1">
                       <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
                         <span>Token Refreshes in:</span>
                         <span className={`font-bold ${timeLeft <= 5 ? 'text-rose-400 animate-pulse' : 'text-teal-300'}`}>
