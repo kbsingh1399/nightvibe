@@ -1648,26 +1648,26 @@
               </p>
             </div>
 
-            {/* 3 Interactive Persona Cards */}
+            {/* 3 Interactive Persona Cards - All centered */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               
               {/* Card 1: Guest */}
               <div
                 onClick={() => handleSelectPersona('guest', '🎧 Guest Clubber')}
-                className="group cursor-pointer rounded-2xl p-5 bg-gradient-to-b from-teal-500/10 via-black/40 to-black/60 border border-teal-500/30 hover:border-teal-400 hover:scale-[1.02] transition-all flex flex-col justify-between space-y-4 shadow-xl"
+                className="group cursor-pointer rounded-2xl p-5 bg-gradient-to-b from-teal-500/10 via-black/40 to-black/60 border border-teal-500/30 hover:border-teal-400 hover:scale-[1.02] transition-all flex flex-col items-center justify-between text-center space-y-4 shadow-xl"
               >
-                <div className="space-y-2">
-                  <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-2xl group-hover:scale-110 transition">
+                <div className="space-y-3 flex flex-col items-center text-center w-full">
+                  <div className="w-14 h-14 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-2xl mx-auto group-hover:scale-110 transition shadow-inner">
                     🎧
                   </div>
-                  <h3 className="text-base font-black text-white group-hover:text-teal-300 transition">
+                  <h3 className="text-base font-black text-white group-hover:text-teal-300 transition text-center">
                     I am a Guest
                   </h3>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[11px] text-slate-400 leading-relaxed text-center">
                     Browse top events, compare verified promoter bids, and unlock 3-way stag/couple passes.
                   </p>
                 </div>
-                <button className="w-full py-2 rounded-xl bg-teal-500 text-black text-xs font-black shadow group-hover:bg-teal-400 transition">
+                <button className="w-full py-2.5 rounded-xl bg-teal-500 text-black text-xs font-black shadow group-hover:bg-teal-400 transition text-center">
                   Enter as Guest →
                 </button>
               </div>
@@ -1675,20 +1675,20 @@
               {/* Card 2: Club Owner */}
               <div
                 onClick={() => handleSelectPersona('owner', '🏢 Club Owner / Manager')}
-                className="group cursor-pointer rounded-2xl p-5 bg-gradient-to-b from-cyan-500/10 via-black/40 to-black/60 border border-cyan-500/30 hover:border-cyan-400 hover:scale-[1.02] transition-all flex flex-col justify-between space-y-4 shadow-xl"
+                className="group cursor-pointer rounded-2xl p-5 bg-gradient-to-b from-cyan-500/10 via-black/40 to-black/60 border border-cyan-500/30 hover:border-cyan-400 hover:scale-[1.02] transition-all flex flex-col items-center justify-between text-center space-y-4 shadow-xl"
               >
-                <div className="space-y-2">
-                  <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-2xl group-hover:scale-110 transition">
+                <div className="space-y-3 flex flex-col items-center text-center w-full">
+                  <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-2xl mx-auto group-hover:scale-110 transition shadow-inner">
                     🏢
                   </div>
-                  <h3 className="text-base font-black text-white group-hover:text-cyan-300 transition">
+                  <h3 className="text-base font-black text-white group-hover:text-cyan-300 transition text-center">
                     I am Club Owner
                   </h3>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Gate door pass scanner, PR promoter whitelist control, live capacity, & instant GSTIN verify.
+                  <p className="text-[11px] text-slate-400 leading-relaxed text-center">
+                    Gate door pass scanner, PR promoter whitelist control, live capacity, &amp; instant GSTIN verify.
                   </p>
                 </div>
-                <button className="w-full py-2 rounded-xl bg-cyan-500 text-black text-xs font-black shadow group-hover:bg-cyan-400 transition">
+                <button className="w-full py-2.5 rounded-xl bg-cyan-500 text-black text-xs font-black shadow group-hover:bg-cyan-400 transition text-center">
                   Open Club Console →
                 </button>
               </div>
@@ -1696,20 +1696,20 @@
               {/* Card 3: PR Promoter */}
               <div
                 onClick={() => handleSelectPersona('pr', '👑 PR Host & Promoter')}
-                className="group cursor-pointer rounded-2xl p-5 bg-gradient-to-b from-purple-500/10 via-black/40 to-black/60 border border-purple-500/30 hover:border-purple-400 hover:scale-[1.02] transition-all flex flex-col justify-between space-y-4 shadow-xl"
+                className="group cursor-pointer rounded-2xl p-5 bg-gradient-to-b from-purple-500/10 via-black/40 to-black/60 border border-purple-500/30 hover:border-purple-400 hover:scale-[1.02] transition-all flex flex-col items-center justify-between text-center space-y-4 shadow-xl"
               >
-                <div className="space-y-2">
-                  <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-2xl group-hover:scale-110 transition">
+                <div className="space-y-3 flex flex-col items-center text-center w-full">
+                  <div className="w-14 h-14 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-2xl mx-auto group-hover:scale-110 transition shadow-inner">
                     👑
                   </div>
-                  <h3 className="text-base font-black text-white group-hover:text-purple-300 transition">
+                  <h3 className="text-base font-black text-white group-hover:text-purple-300 transition text-center">
                     I am PR / Host
                   </h3>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[11px] text-slate-400 leading-relaxed text-center">
                     Publish competitive bids, bundle VIP perks, invite guestlists, and get instant UPI payouts.
                   </p>
                 </div>
-                <button className="w-full py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-black shadow group-hover:opacity-90 transition">
+                <button className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-black shadow group-hover:opacity-90 transition text-center">
                   Open PR Hub →
                 </button>
               </div>
@@ -1717,8 +1717,8 @@
             </div>
 
             {/* Footer Options: Remember & Mobile Login */}
-            <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <label className="flex items-center gap-2 text-slate-400 cursor-pointer select-none">
+            <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-center">
+              <label className="flex items-center justify-center gap-2 text-slate-400 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={rememberChoice}
@@ -1730,7 +1730,7 @@
 
               <button
                 onClick={onOpenAuth}
-                className="text-teal-300 hover:text-teal-200 font-bold flex items-center gap-1.5 transition"
+                className="text-teal-300 hover:text-teal-200 font-bold flex items-center justify-center gap-1.5 transition"
               >
                 <span>📱</span>
                 <span>Sign in with Mobile OTP directly →</span>

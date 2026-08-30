@@ -32,3 +32,16 @@
        - Displays: `👑 Bidding & Wallet`, `🎯 Campaign Events`, `💼 Talent Network`.
   3. **Verified via Browser Subagent**:
      - Captured `01_club_owner_centered_tabs`, `02_club_owner_city_events_view`, and `03_gateway_modal_centered`.
+
+## Turn: Persona Gateway Modal Card Elements Centered
+- **User Request:** "all text and icon should be in center"
+- **Actions Executed:**
+  1. Updated `PersonaWelcomeGatewayModal` in `index.html`:
+     - Centered all 3 card icon badges with `mx-auto flex items-center justify-center w-14 h-14`.
+     - Centered all card headings (`I am a Guest`, `I am Club Owner`, `I am PR / Host`) with `text-center`.
+     - Centered all card descriptions with `text-center leading-relaxed`.
+     - Centered all action buttons with `text-center w-full py-2.5`.
+     - Centered bottom options and mobile OTP sign-in triggers.
+  2. Verified via Browser Subagent:
+     - Screenshot `01_persona_gateway_all_text_icons_centered.png` confirms exact symmetric horizontal centering at pixel coordinates (X: 392, 500, 608).
+
