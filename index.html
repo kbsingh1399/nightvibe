@@ -729,12 +729,15 @@
         return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
       });
 
-      const [currentUser, setCurrentUser] = useState({
-        name: 'Arjun Kapoor',
-        phone: '+91 98200 44321',
-        email: 'arjun.k@gmail.com',
-        upiId: 'arjun@okaxis',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+      const [currentUser, setCurrentUser] = useState(() => {
+        const saved = localStorage.getItem('nv_current_user');
+        return saved ? JSON.parse(saved) : {
+          name: 'Arjun K (Guest)',
+          phone: '+91 98200 44321',
+          roles: ['guest'],
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+          isLoggedIn: true,
+        };
       });
 
       const [activeOwnerVenueId, setActiveOwnerVenueId] = useState('venue_trilogy');
@@ -763,6 +766,52 @@
       useEffect(() => {
         if (myPrProfile) localStorage.setItem('nv_my_pr', JSON.stringify(myPrProfile));
       }, [myPrProfile]);
+      useEffect(() => {
+        localStorage.setItem('nv_current_user', JSON.stringify(currentUser));
+      }, [currentUser]);
+
+      // Direct Phone OTP Login Handler
+      const loginWithPhone = (phone, name = 'Nightlife Guest', otp = '123456') => {
+        const cleanPhone = phone.startsWith('+91') ? phone : `+91 ${phone}`;
+        const updatedUser = {
+          name: name.trim() || 'Nightlife Guest',
+          phone: cleanPhone,
+          roles: currentUser.roles?.includes('pr') ? ['guest', 'pr'] : ['guest'],
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+          isLoggedIn: true,
+          token: `nv_jwt_${Date.now()}`
+        };
+        setCurrentUser(updatedUser);
+        localStorage.setItem('nv_auth_token', updatedUser.token);
+        showToast(`📲 Signed In via Mobile OTP: Welcome ${updatedUser.name}!`, 'success');
+        return updatedUser;
+      };
+
+      const logout = () => {
+        localStorage.removeItem('nv_auth_token');
+        setCurrentUser({
+          name: 'Guest Explorer',
+          phone: '+91 98000 00000',
+          roles: ['guest'],
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+          isLoggedIn: false,
+        });
+        setRole('guest');
+        showToast('👋 Signed out successfully', 'info');
+      };
+
+      const claimVenueOwnership = (venueId, pin) => {
+        const venue = venues.find(v => v.id === venueId);
+        if (!venue) return { success: false, message: 'Venue not found' };
+        if (pin !== '8844' && pin !== '1122' && pin !== '9933') {
+          showToast('❌ Invalid Security PIN for this Club', 'error');
+          return { success: false, message: 'Invalid PIN' };
+        }
+        setActiveOwnerVenueId(venueId);
+        setRole('owner');
+        showToast(`🏢 Verified Manager Access for ${venue.name}`, 'success');
+        return { success: true };
+      };
 
       // Add New PR Profile (LinkedIn for PRs)
       const registerPRProfile = (newPrData) => {
@@ -1026,6 +1075,9 @@
             setHasJoinedPR,
             myPrProfile,
             setMyPrProfile,
+            loginWithPhone,
+            logout,
+            claimVenueOwnership,
             toast,
             showToast,
             registerPRProfile,
@@ -1171,13 +1223,21 @@
                   )}
                 </button>
 
-                {/* Avatar */}
-                <img
-                  src={currentUser.avatar}
-                  alt="User"
+                {/* User Phone Auth & Persona Badge */}
+                <button
                   onClick={onOpenAuth}
-                  className="w-7 h-7 rounded-full object-cover ring-1 ring-white/10 hover:ring-teal-500/40 cursor-pointer transition shrink-0"
-                />
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] transition"
+                  title="Phone OTP Sign-In & Role Management"
+                >
+                  <img
+                    src={currentUser.avatar}
+                    alt="User"
+                    className="w-6 h-6 rounded-full object-cover ring-1 ring-teal-500/40"
+                  />
+                  <span className="hidden xl:inline text-[10px] text-slate-400 font-mono">
+                    {currentUser.phone || '+91 Login'}
+                  </span>
+                </button>
               </div>
 
             </div>
@@ -1469,6 +1529,314 @@
               </div>
             </div>
           )}
+        </div>
+      );
+    };
+
+    // --- DIRECT INDIAN MOBILE OTP SIGN-IN & ROLE DISAMBIGUATION MODAL ---
+    const PhoneOTPLoginModal = ({ isOpen, onClose, onOpenCreatePR }) => {
+      const { currentUser, loginWithPhone, logout, venues, claimVenueOwnership, setRole, hasJoinedPR } = useApp();
+      const [step, setStep] = useState(currentUser?.isLoggedIn ? 'PROFILE' : 'PHONE');
+      const [phone, setPhone] = useState(currentUser?.phone?.replace('+91 ', '') || '');
+      const [name, setName] = useState(currentUser?.name || '');
+      const [otp, setOtp] = useState(['', '', '', '', '', '']);
+      const [resendTimer, setResendTimer] = useState(30);
+      const [venuePin, setVenuePin] = useState('');
+      const [selectedVenueToClaim, setSelectedVenueToClaim] = useState(venues[0]?.id || 'venue_trilogy');
+
+      useEffect(() => {
+        if (currentUser?.isLoggedIn) setStep('PROFILE');
+      }, [currentUser]);
+
+      useEffect(() => {
+        let interval;
+        if (step === 'OTP' && resendTimer > 0) {
+          interval = setInterval(() => setResendTimer((t) => t - 1), 1000);
+        }
+        return () => clearInterval(interval);
+      }, [step, resendTimer]);
+
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (e.key === 'Escape' && isOpen) onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, [isOpen, onClose]);
+
+      if (!isOpen) return null;
+
+      const handleSendOTP = (e) => {
+        e.preventDefault();
+        if (phone.replace(/\D/g, '').length < 10) {
+          alert('Please enter a valid 10-digit Indian mobile number');
+          return;
+        }
+        setStep('OTP');
+        setResendTimer(30);
+        setOtp(['1', '2', '3', '4', '5', '6']); // Pre-filled test OTP for instant dev convenience
+      };
+
+      const handleOtpChange = (index, value) => {
+        if (!/^\d*$/.test(value)) return;
+        const newOtp = [...otp];
+        newOtp[index] = value.slice(-1);
+        setOtp(newOtp);
+
+        // Auto-advance
+        if (value && index < 5) {
+          const nextInput = document.getElementById(`otp-box-${index + 1}`);
+          if (nextInput) nextInput.focus();
+        }
+
+        // Auto submit if 6th digit entered
+        if (newOtp.every(d => d !== '') && index === 5) {
+          loginWithPhone(phone, name, newOtp.join(''));
+          setStep('PROFILE');
+        }
+      };
+
+      const handleVerifyOTP = (e) => {
+        e.preventDefault();
+        const otpCode = otp.join('');
+        loginWithPhone(phone, name, otpCode);
+        setStep('PROFILE');
+      };
+
+      const handleClaimVenue = (e) => {
+        e.preventDefault();
+        const res = claimVenueOwnership(selectedVenueToClaim, venuePin);
+        if (res.success) {
+          onClose();
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+          <div className="relative w-full max-w-md rounded-3xl glass-panel p-6 shadow-2xl border border-teal-500/40 my-8 space-y-5">
+            <button onClick={onClose} className="absolute top-5 right-5 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400">
+              ✕
+            </button>
+
+            {/* Header Icon */}
+            <div className="text-center space-y-1.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-600 p-[2px] mx-auto">
+                <div className="w-full h-full bg-[#0d0f17] rounded-[14px] flex items-center justify-center text-xl">
+                  📱
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-white">
+                {step === 'PROFILE' ? 'Your NightVibe Account' : 'Direct Mobile OTP Sign-In'}
+              </h3>
+              <p className="text-xs text-slate-400">
+                {step === 'PHONE' && 'Enter your 10-digit Indian mobile number for instant WhatsApp/SMS OTP.'}
+                {step === 'OTP' && `Enter the 6-digit code sent to +91 ${phone}`}
+                {step === 'PROFILE' && 'Manage your active persona, linked wallets and venue management access.'}
+              </p>
+            </div>
+
+            {/* STEP 1: Phone & Name Input */}
+            {step === 'PHONE' && (
+              <form onSubmit={handleSendOTP} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Your Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Arjun Kapoor"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:border-teal-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Mobile Number (+91)</label>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 font-mono font-bold">
+                      🇮🇳 +91
+                    </span>
+                    <input
+                      type="tel"
+                      required
+                      maxLength="10"
+                      placeholder="98200 44321"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white font-mono text-sm tracking-wider focus:border-teal-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 text-black font-black text-xs shadow-lg hover:opacity-95 transition"
+                >
+                  Send 6-Digit OTP Code →
+                </button>
+
+                <p className="text-[10px] text-center text-slate-500">
+                  By continuing, you agree to NightVibe's Terms of Service & Escrow Privacy Policy.
+                </p>
+              </form>
+            )}
+
+            {/* STEP 2: 6-Digit OTP Box Verification */}
+            {step === 'OTP' && (
+              <form onSubmit={handleVerifyOTP} className="space-y-4 text-xs">
+                <div className="flex justify-between items-center gap-1.5">
+                  {otp.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      id={`otp-box-${idx}`}
+                      type="text"
+                      maxLength="1"
+                      value={digit}
+                      onChange={(e) => handleOtpChange(idx, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Backspace' && !otp[idx] && idx > 0) {
+                          document.getElementById(`otp-box-${idx - 1}`).focus();
+                        }
+                      }}
+                      className="w-11 h-12 text-center text-lg font-mono font-black text-teal-300 rounded-xl bg-white/5 border border-teal-500/30 focus:border-teal-400 focus:bg-teal-500/10 focus:outline-none"
+                    />
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setStep('PHONE')}
+                    className="text-slate-400 hover:text-white"
+                  >
+                    ← Change Phone
+                  </button>
+                  <span className="text-slate-500">
+                    {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : (
+                      <button type="button" onClick={() => setResendTimer(30)} className="text-teal-400 font-bold">
+                        Resend OTP Now
+                      </button>
+                    )}
+                  </span>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 text-black font-black text-xs shadow-lg hover:opacity-95 transition"
+                >
+                  Verify & Enter NightVibe (Instant)
+                </button>
+
+                <div className="p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-[10px] text-teal-300 text-center">
+                  💡 Dev Sandbox: Default test OTP is <b>123456</b>
+                </div>
+              </form>
+            )}
+
+            {/* STEP 3: User Profile & Role Disambiguation Dashboard */}
+            {step === 'PROFILE' && (
+              <div className="space-y-4 text-xs">
+                {/* Active Persona Badge Card */}
+                <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <img src={currentUser.avatar} alt="Avatar" className="w-12 h-12 rounded-full object-cover ring-2 ring-teal-500/40" />
+                      <div>
+                        <h4 className="font-bold text-white text-sm">{currentUser.name}</h4>
+                        <p className="text-[11px] text-slate-400 font-mono">{currentUser.phone}</p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                      🎧 Guest Explorer
+                    </span>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/5 text-[11px] text-slate-300 leading-relaxed">
+                    Default profile: You can browse events, compare verified promoter bids, and hold passes securely in escrow.
+                  </div>
+                </div>
+
+                {/* Role Upgrade Cards (Resolves User Confusion) */}
+                <div className="space-y-2.5">
+                  <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px] block">Role Upgrade Options</span>
+
+                  {/* PR Host Upgrade */}
+                  <div className="p-3 rounded-xl bg-white/[0.03] border border-amber-500/20 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-amber-400 font-bold">👑 Nightlife PR / Host</span>
+                        {hasJoinedPR && <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-bold">ACTIVE</span>}
+                      </div>
+                      <p className="text-[10px] text-slate-400">Earn dynamic commissions & submit bids for partner clubs.</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        onClose();
+                        if (hasJoinedPR) {
+                          setRole('pr');
+                        } else {
+                          onOpenCreatePR();
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 text-xs font-bold whitespace-nowrap transition"
+                    >
+                      {hasJoinedPR ? 'Open Console' : '✨ Join as PR'}
+                    </button>
+                  </div>
+
+                  {/* Club Owner Claim with PIN */}
+                  <div className="p-3 rounded-xl bg-white/[0.03] border border-cyan-500/20 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-cyan-400 font-bold">🏢 Club Venue Owner / Manager</span>
+                        <p className="text-[10px] text-slate-400">Verify door passes, monitor occupancy & release escrow payouts.</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleClaimVenue} className="flex gap-2 pt-1">
+                      <select
+                        value={selectedVenueToClaim}
+                        onChange={(e) => setSelectedVenueToClaim(e.target.value)}
+                        className="flex-1 px-2 py-1 rounded-lg bg-black/50 border border-white/10 text-white text-[11px]"
+                      >
+                        {venues.map(v => (
+                          <option key={v.id} value={v.id}>{v.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="password"
+                        placeholder="PIN (8844)"
+                        value={venuePin}
+                        onChange={(e) => setVenuePin(e.target.value)}
+                        className="w-20 px-2 py-1 rounded-lg bg-black/50 border border-white/10 text-white text-center text-[11px] font-mono"
+                      />
+                      <button
+                        type="submit"
+                        className="px-3 py-1 rounded-lg bg-cyan-500 text-black text-[11px] font-bold shadow hover:bg-cyan-400"
+                      >
+                        Claim
+                      </button>
+                    </form>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => { logout(); setStep('PHONE'); }}
+                    className="flex-1 py-2.5 rounded-xl bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 border border-rose-500/20 font-bold text-xs transition"
+                  >
+                    🚪 Sign Out
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       );
     };
@@ -3000,6 +3368,7 @@
       const { role, activeView, setActiveView, toast } = useApp();
       const [passesOpen, setPassesOpen] = useState(false);
       const [createPROpen, setCreatePROpen] = useState(false);
+      const [authOpen, setAuthOpen] = useState(false);
       const [selectedTkt, setSelectedTkt] = useState(null);
 
       useEffect(() => {
@@ -3030,7 +3399,7 @@
               setPassesOpen(true);
             }}
             onOpenCreatePR={() => setCreatePROpen(true)}
-            onOpenAuth={() => alert('Current Active User: Arjun Kapoor')}
+            onOpenAuth={() => setAuthOpen(true)}
           />
 
           <main className="flex-1 w-full">
@@ -3079,11 +3448,11 @@
             </button>
 
             <button
-              onClick={() => setCreatePROpen(true)}
-              className="flex flex-col items-center gap-0.5 text-[10px] font-semibold text-pink-400"
+              onClick={() => setAuthOpen(true)}
+              className="flex flex-col items-center gap-0.5 text-[10px] font-semibold text-teal-400"
             >
-              <span className="text-base">✨</span>
-              <span>Join PR</span>
+              <span className="text-base">📱</span>
+              <span>My Account</span>
             </button>
           </nav>
 
@@ -3093,6 +3462,7 @@
 
           <MyPassesModal isOpen={passesOpen} onClose={() => setPassesOpen(false)} defaultTicketId={selectedTkt} />
           <CreatePRProfileModal isOpen={createPROpen} onClose={() => setCreatePROpen(false)} />
+          <PhoneOTPLoginModal isOpen={authOpen} onClose={() => setAuthOpen(false)} onOpenCreatePR={() => { setAuthOpen(false); setCreatePROpen(true); }} />
 
           {toast && (
             <div className="fixed bottom-20 md:bottom-6 right-6 z-50 p-3.5 rounded-2xl bg-emerald-950/90 border border-emerald-500 text-emerald-200 text-xs font-semibold shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-5">
