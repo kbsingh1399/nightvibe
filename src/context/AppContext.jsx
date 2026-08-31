@@ -305,6 +305,7 @@ export const AppProvider = ({ children }) => {
 
     setEvents((prev) => [fullEvent, ...prev]);
     showToast(`🎉 Event "${fullEvent.title}" created! Approved PRs can now start bidding.`, 'success');
+    return fullEvent;
   };
 
   return (

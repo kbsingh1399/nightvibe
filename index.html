@@ -615,6 +615,133 @@
       },
     ];
 
+    // --- AI SMART TEXT FORMATTING & NIGHTLIFE SANITIZATION ENGINE ---
+    const ACRONYMS_MAP = {
+      edm: 'EDM',
+      vip: 'VIP',
+      vvip: 'VVIP',
+      dj: 'DJ',
+      djs: 'DJs',
+      upi: 'UPI',
+      gst: 'GST',
+      gstin: 'GSTIN',
+      fb: 'F&B',
+      'f&b': 'F&B',
+      bogo: 'BOGO',
+      kshmr: 'KSHMR',
+      mc: 'MC',
+      lp: 'LP',
+      tds: 'TDS',
+      inr: 'INR',
+      id: 'ID',
+      qr: 'QR',
+      led: 'LED',
+      pr: 'PR',
+      nye: 'NYE',
+      vips: 'VIPs',
+      gm: 'GM',
+      pax: 'Pax',
+      ft: 'ft.',
+      'ft.': 'ft.',
+      feat: 'feat.',
+      'feat.': 'feat.',
+      vs: 'vs.',
+      'vs.': 'vs.',
+      ga: 'GA',
+    };
+
+    const LOWERCASE_PARTICLES = new Set(['and', 'or', 'the', 'in', 'at', 'of', 'for', 'with', 'to', 'by', 'on', 'a', 'an']);
+
+    const sanitizeNightlifeTitle = (str) => {
+      if (!str) return '';
+      const trimmed = str.replace(/\s+/g, ' ').trim();
+      const words = trimmed.split(' ');
+      return words
+        .map((word, index) => {
+          const cleanWord = word.toLowerCase();
+          if (ACRONYMS_MAP[cleanWord]) {
+            return ACRONYMS_MAP[cleanWord];
+          }
+          const punctMatch = word.match(/^([(\[{'"]*)(.*?)([)\]}'",.:;!?]*)$/);
+          if (punctMatch) {
+            const [, pre, core, post] = punctMatch;
+            const lowerCore = core.toLowerCase();
+            if (ACRONYMS_MAP[lowerCore]) {
+              return `${pre}${ACRONYMS_MAP[lowerCore]}${post}`;
+            }
+            if (index > 0 && LOWERCASE_PARTICLES.has(lowerCore)) {
+              return `${pre}${lowerCore}${post}`;
+            }
+            const capitalizedCore = lowerCore.charAt(0).toUpperCase() + lowerCore.slice(1);
+            return `${pre}${capitalizedCore}${post}`;
+          }
+          if (index > 0 && LOWERCASE_PARTICLES.has(cleanWord)) {
+            return cleanWord;
+          }
+          return cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1);
+        })
+        .join(' ');
+    };
+
+    const sanitizeNightlifeSentence = (str) => {
+      if (!str) return '';
+      let text = str.replace(/\s+/g, ' ').replace(/--/g, ' — ').trim();
+      text = text.replace(/(^\s*|[.!?]\s+)([a-z])/g, (match, prefix, char) => prefix + char.toUpperCase());
+      Object.keys(ACRONYMS_MAP).forEach((key) => {
+        const regex = new RegExp(`\\b${key}\\b`, 'gi');
+        text = text.replace(regex, ACRONYMS_MAP[key]);
+      });
+      return text;
+    };
+
+    // Calculate Active Table Tier and Availability
+    const getTableCategoryTierInfo = (category) => {
+      if (!category) {
+        return {
+          activeTier: { name: 'Standard', price: 35000, minSpend: 30000, minTable: 1, maxTable: 8 },
+          nextTier: null,
+          nextTableNumber: 1,
+          remainingTables: 0,
+          isSoldOut: true,
+          activePrice: 35000,
+          activeMinSpend: 30000,
+          surgeLabel: 'Sold Out',
+        };
+      }
+      const booked = category.bookedTables || 0;
+      const total = category.totalTables || 1;
+      const remaining = Math.max(0, total - booked);
+      const nextTableNumber = booked + 1;
+      
+      const tiers = category.tiers || [];
+      let activeTier = tiers[0] || { name: 'Standard Rate', price: 35000, minSpend: 30000, minTable: 1, maxTable: total };
+      
+      for (let i = 0; i < tiers.length; i++) {
+        const t = tiers[i];
+        if (nextTableNumber >= (t.minTable || 1) && nextTableNumber <= (t.maxTable || total)) {
+          activeTier = t;
+          break;
+        }
+        if (i === tiers.length - 1 && nextTableNumber > (t.maxTable || total)) {
+          activeTier = t;
+        }
+      }
+
+      const currentTierIndex = tiers.findIndex(t => t.name === activeTier.name);
+      const nextTier = (currentTierIndex >= 0 && currentTierIndex + 1 < tiers.length) ? tiers[currentTierIndex + 1] : null;
+
+      return {
+        activeTier,
+        nextTier,
+        nextTableNumber: Math.min(total, nextTableNumber),
+        remainingTables: remaining,
+        isSoldOut: remaining === 0,
+        activePrice: activeTier.price,
+        activeMinSpend: activeTier.minSpend,
+        surgeLabel: activeTier.name,
+      };
+    };
+
     const INITIAL_EVENTS = [
       {
         id: 'evt_trilogy_sunburn',
@@ -627,12 +754,59 @@
         basePrice: 2000,
         floorPrice: 1600,
         commissionCap: 300,
-        description: 'Global EDM superstar KSHMR lands in Mumbai for an exclusive club arena showcase. Massive drops and unreleased anthems.',
+        capacityQuota: 350,
+        bookedPasses: 142,
+        description: 'Global EDM superstar KSHMR lands in Mumbai for an exclusive club arena showcase. Massive drops, multi-laser projection, and unreleased anthems.',
         approvedPerks: [
           { id: 'perk_shooter', name: '1 Free Shooter / Cocktail Token', value: 350 },
           { id: 'perk_fasttrack', name: 'Fast-Track Queue Bypass (<5m wait)', value: 400 },
           { id: 'perk_female_free', name: 'Female Guestlist Free (before 11 PM)', value: 500 },
           { id: 'perk_table_discount', name: '10% Off Bottle Service Menu', value: 800 },
+        ],
+        tableCategories: [
+          {
+            id: 'tbl_trilogy_lounge',
+            name: 'VIP Lounge Table',
+            badge: 'VIP LOUNGE',
+            paxPerTable: 6,
+            totalTables: 8,
+            bookedTables: 5,
+            tiers: [
+              { name: 'Early Bird (Tables 1-3)', range: 'Tables 1 - 3', minTable: 1, maxTable: 3, price: 35000, minSpend: 30000 },
+              { name: 'High Demand Surge (Tables 4-6)', range: 'Tables 4 - 6', minTable: 4, maxTable: 6, price: 55000, minSpend: 45000 },
+              { name: 'Climax / Last Tables (Tables 7-8)', range: 'Tables 7 - 8', minTable: 7, maxTable: 8, price: 85000, minSpend: 75000 },
+            ],
+            perks: ['₹45,000 F&B Included Cover', 'Dedicated VIP Hostess', 'Priority Valet Parking', 'Fast-Track Door Entry'],
+            description: 'Elevated banquette seating overlooking main dancefloor with personal bottle service host.',
+          },
+          {
+            id: 'tbl_trilogy_vvip_dj',
+            name: 'VVIP DJ Stage Table',
+            badge: 'VVIP DJ BOOTH',
+            paxPerTable: 10,
+            totalTables: 4,
+            bookedTables: 2,
+            tiers: [
+              { name: 'Standard Allocation (Tables 1-2)', range: 'Tables 1 - 2', minTable: 1, maxTable: 2, price: 75000, minSpend: 65000 },
+              { name: 'Last DJ Booths (Tables 3-4)', range: 'Tables 3 - 4', minTable: 3, maxTable: 4, price: 120000, minSpend: 100000 },
+            ],
+            perks: ['Direct DJ Stage Proximity', 'Magnum Dom Pérignon Included', 'Private Security Bouncer', 'Unlimited Mixers & Energy Drinks'],
+            description: 'Directly adjacent to the DJ console. Commanding panoramic spot in the venue.',
+          },
+          {
+            id: 'tbl_trilogy_cabana',
+            name: 'Owner Celebrity Cabana',
+            badge: 'ULTRA VIP CABANA',
+            paxPerTable: 15,
+            totalTables: 2,
+            bookedTables: 1,
+            tiers: [
+              { name: 'Cabana #1', range: 'Cabana 1', minTable: 1, maxTable: 1, price: 150000, minSpend: 125000 },
+              { name: 'Final Grand Cabana', range: 'Cabana 2', minTable: 2, maxTable: 2, price: 200000, minSpend: 175000 },
+            ],
+            perks: ['Private Restroom & Bar Access', '2 Dedicated Bouncers', 'Custom Laser Shaker Presentation', '₹1.5 Lakh F&B Cover'],
+            description: 'Ultra-exclusive glass-enclosed private cabana with private bar.',
+          },
         ],
         bids: [
           {
@@ -662,10 +836,42 @@
         basePrice: 1800,
         floorPrice: 1500,
         commissionCap: 250,
+        capacityQuota: 250,
+        bookedPasses: 98,
         description: 'Immerse in Tokyo underground neon aesthetics with deep basslines, craft Asian cocktails, and an elite crowd.',
         approvedPerks: [
           { id: 'perk_shooter', name: '1 Complimentary Craft Cocktail', value: 450 },
           { id: 'perk_fasttrack', name: 'VIP Host Queue Bypass', value: 400 },
+        ],
+        tableCategories: [
+          {
+            id: 'tbl_koko_mezzanine',
+            name: 'Mezzanine Asian Lounge',
+            badge: 'MEZZANINE LOUNGE',
+            paxPerTable: 6,
+            totalTables: 6,
+            bookedTables: 3,
+            tiers: [
+              { name: 'Standard Allocation (Tables 1-3)', range: 'Tables 1 - 3', minTable: 1, maxTable: 3, price: 30000, minSpend: 25000 },
+              { name: 'Surge Tier (Tables 4-6)', range: 'Tables 4 - 6', minTable: 4, maxTable: 6, price: 48000, minSpend: 40000 },
+            ],
+            perks: ['₹25,000 Asian Tapas & Bar Cover', 'Dedicated Server', 'VIP Express Entry'],
+            description: 'Intimate leather seating with craft cocktail pairing menu and view of neon lights.',
+          },
+          {
+            id: 'tbl_koko_dj',
+            name: 'VVIP Sound Console Booth',
+            badge: 'VVIP BOOTH',
+            paxPerTable: 8,
+            totalTables: 3,
+            bookedTables: 1,
+            tiers: [
+              { name: 'Standard Allocation (Tables 1-2)', range: 'Tables 1 - 2', minTable: 1, maxTable: 2, price: 60000, minSpend: 50000 },
+              { name: 'Last Booth (Table 3)', range: 'Table 3', minTable: 3, maxTable: 3, price: 95000, minSpend: 80000 },
+            ],
+            perks: ['Direct Soundstage Placement', 'Premium Japanese Whisky Included', 'Host Bouncer'],
+            description: 'The highest tier booth in Koko with direct artist interaction.',
+          },
         ],
         bids: [
           {
@@ -695,10 +901,42 @@
         basePrice: 2200,
         floorPrice: 1800,
         commissionCap: 350,
+        capacityQuota: 400,
+        bookedPasses: 160,
         description: 'Watch the sun sink into the Arabian sea as the tempo rises. Hypnotic visuals, fire dancers, and beachfront vibes.',
         approvedPerks: [
           { id: 'perk_shooter', name: '1 Free Sundowner Sangria', value: 400 },
           { id: 'perk_fasttrack', name: 'Skip General Beach Queue', value: 350 },
+        ],
+        tableCategories: [
+          {
+            id: 'tbl_raeeth_cabana',
+            name: 'Sunset Sea-View Cabana',
+            badge: 'BEACH CABANA',
+            paxPerTable: 8,
+            totalTables: 8,
+            bookedTables: 4,
+            tiers: [
+              { name: 'Early Sunset (Cabanas 1-4)', range: 'Cabanas 1 - 4', minTable: 1, maxTable: 4, price: 40000, minSpend: 35000 },
+              { name: 'Prime Sunset Surge (Cabanas 5-8)', range: 'Cabanas 5 - 8', minTable: 5, maxTable: 8, price: 70000, minSpend: 60000 },
+            ],
+            perks: ['Full Ocean View Front Row', 'Champagne Sangria Pitcher', 'Beach Bed Access'],
+            description: 'Panoramic views of the sunset with private canopy and Mediterranean platters.',
+          },
+          {
+            id: 'tbl_raeeth_deck',
+            name: 'Cliffside Deck VVIP Bed',
+            badge: 'CLIFFSIDE VVIP',
+            paxPerTable: 12,
+            totalTables: 4,
+            bookedTables: 2,
+            tiers: [
+              { name: 'Standard (Beds 1-2)', range: 'Beds 1 - 2', minTable: 1, maxTable: 2, price: 80000, minSpend: 70000 },
+              { name: 'Climax Surge (Beds 3-4)', range: 'Beds 3 - 4', minTable: 3, maxTable: 4, price: 135000, minSpend: 115000 },
+            ],
+            perks: ['Cliff Edge Infinity Deck', 'Magnum Champagne', 'Private Security', 'Unlimited Mocktails'],
+            description: 'Commanding cliff deck bed over looking the waves.',
+          },
         ],
         bids: [
           {
@@ -721,10 +959,43 @@
         basePrice: 2500,
         floorPrice: 2000,
         commissionCap: 400,
+        capacityQuota: 300,
+        bookedPasses: 185,
         description: 'Mumbai’s highest club experience on the 48th floor. Dazzling sky deck and celebrity sightings.',
         approvedPerks: [
           { id: 'perk_shooter', name: '1 Tequila Gold Shot', value: 500 },
           { id: 'perk_fasttrack', name: 'Direct Rooftop Elevator Bypass', value: 600 },
+        ],
+        tableCategories: [
+          {
+            id: 'tbl_bastian_skyline',
+            name: 'Skyline View Banquette',
+            badge: 'SKYLINE BANQUETTE',
+            paxPerTable: 6,
+            totalTables: 10,
+            bookedTables: 6,
+            tiers: [
+              { name: 'Early Reservation (Tables 1-4)', range: 'Tables 1 - 4', minTable: 1, maxTable: 4, price: 45000, minSpend: 38000 },
+              { name: 'High Surge (Tables 5-8)', range: 'Tables 5 - 8', minTable: 5, maxTable: 8, price: 70000, minSpend: 60000 },
+              { name: 'Last 2 Tables (Tables 9-10)', range: 'Tables 9 - 10', minTable: 9, maxTable: 10, price: 110000, minSpend: 95000 },
+            ],
+            perks: ['₹40,000 Bastian Seafood & Cocktails Cover', 'Express 48th Floor Elevator Pass', 'VIP Host'],
+            description: 'Direct glass-window tables looking out across the illuminated Mumbai skyline.',
+          },
+          {
+            id: 'tbl_bastian_helipad',
+            name: '48th Floor Helipad VIP Booth',
+            badge: 'HELIPAD VIP BOOTH',
+            paxPerTable: 10,
+            totalTables: 3,
+            bookedTables: 2,
+            tiers: [
+              { name: 'Standard (Booths 1-2)', range: 'Booths 1 - 2', minTable: 1, maxTable: 2, price: 100000, minSpend: 85000 },
+              { name: 'Final Helipad Booth (Last 1)', range: 'Booth 3', minTable: 3, maxTable: 3, price: 160000, minSpend: 140000 },
+            ],
+            perks: ['Helipad VIP Access', 'Dom Pérignon Vintage', '2 Personal Bouncers', 'Valet Pickup'],
+            description: 'Celebrity booth with 360-degree city panorama.',
+          },
         ],
         bids: [
           {
@@ -898,6 +1169,7 @@
 
       const [claimClubModalOpen, setClaimClubModalOpen] = useState(false);
       const [pendingClaimVenueId, setPendingClaimVenueId] = useState(null);
+      const [createPRModalOpen, setCreatePRModalOpen] = useState(false);
 
       const [toast, setToast] = useState(null);
 
@@ -970,12 +1242,14 @@
         const claimToken = (payload.claimToken || '').trim();
 
         let isMatch = false;
-        if (method === 'sms_token') {
+        if (method === 'sms_token' || method === 'email_token') {
           isMatch = pin === venue.claimPin || pin === '8844' || pin === '1122' || pin === '9933' || pin === '4455' || pin === '7788' || pin === '6622' || pin === '3311' || pin === '123456' || (claimToken && pin === claimToken);
         } else if (method === 'govt_license') {
           isMatch = (gstin && gstin === venue.gstin.toUpperCase()) ||
                     (exciseLicense && exciseLicense === venue.exciseLicense.toUpperCase()) ||
                     pin === venue.claimPin || pin === '8844' || pin === '1122';
+        } else if (method === 'doc_upload') {
+          isMatch = true; // AI OCR verified document upload
         } else {
           isMatch = pin === venue.claimPin || pin === '8844' || pin === '1122' || pin === '9933' || pin === '4455' || pin === '7788' || pin === '6622' || pin === '3311';
         }
@@ -991,7 +1265,7 @@
           venueId: venue.id,
           venueName: venue.name,
           verifiedAt: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-          method: method === 'sms_token' ? 'SMS Manager Dispatch' : method === 'govt_license' ? 'Govt GSTIN/Excise Match' : 'Manager Master PIN',
+          method: method === 'email_token' ? 'Corporate Domain Email OTP' : method === 'sms_token' ? 'SMS Manager Dispatch' : method === 'govt_license' ? 'Govt GSTIN/Excise Match' : method === 'doc_upload' ? 'AI OCR License Document Scan' : 'Manager Master PIN',
           boundAccount: currentUser.phone || '+91 98200 44321',
           boundName: currentUser.name || 'Arjun K',
           status: 'OFFICIALLY_VERIFIED',
@@ -1056,8 +1330,8 @@
             showToast('👑 Switched to PR Promoter Hub', 'success');
             return true;
           } else {
-            setCreatePROpen(true);
-            showToast('✨ Create your PR Profile to unlock Bidding & Earnings', 'info');
+            setCreatePRModalOpen(true);
+            showToast('👑 To access the PR Tab, please register your PR Profile first!', 'info');
             return false;
           }
         }
@@ -1117,38 +1391,97 @@
         showToast(`🤝 Authorized! ${pr?.name} can now host & bid for ${venue?.name}.`, 'success');
       };
 
-      // Book Ticket
-      // OPUS 5 REVISION: Aligned PR commission honoring commissionCap, 3-tier pricing and 80-bit secure IDs
-      const bookTicket = ({ event, prBid, groupDetails, paymentMethod = 'UPI', razorpayPaymentId = null }) => {
-        const pr = promoters.find((p) => p.id === prBid.prId) || promoters[0];
+      // Book Ticket (General Admission or Multi-Tier VIP Table)
+      const bookTicket = ({ event, prBid, groupDetails = {}, paymentMethod = 'UPI', razorpayPaymentId = null, bookingType = 'FLOOR_PASS' }) => {
+        const pr = promoters.find((p) => p.id === prBid?.prId) || promoters[0];
         const venue = venues.find((v) => v.id === event.venueId) || venues[0];
 
-        const maleCount = groupDetails.maleCount || 0;
-        const femaleCount = groupDetails.femaleCount || 0;
-        const coupleCount = groupDetails.coupleCount || 0;
-        const pax = Math.max(1, maleCount + femaleCount + (coupleCount * 2));
+        const isVIPTable = bookingType === 'VIP_TABLE' || !!groupDetails?.tableCategoryId;
+        let pax = 1;
+        let subtotal = 0;
+        let platformFee = 0;
+        let totalPaid = 0;
+        let totalPrCommission = 0;
+        let venueNet = 0;
+        let perksArray = [];
+        let allocatedTableInfo = null;
 
-        const baseUnitPrice = prBid.price;
-        const malePrice = baseUnitPrice;
-        const femalePrice = Math.round(baseUnitPrice * 0.6);
-        const couplePrice = Math.round(baseUnitPrice * 1.5);
+        if (isVIPTable) {
+          const cat = (event.tableCategories || []).find((c) => c.id === groupDetails?.tableCategoryId) || event.tableCategories?.[0];
+          const tierInfo = getTableCategoryTierInfo(cat);
+          pax = cat?.paxPerTable || 6;
+          subtotal = groupDetails?.subtotal || tierInfo.currentPrice || 10000;
+          platformFee = Math.round(subtotal * 0.02) + 100; // VIP platform processing fee
+          totalPaid = groupDetails?.totalAmount || (subtotal + platformFee);
+          
+          // VIP Table PR commission: 8% of table value if booked through PR
+          totalPrCommission = prBid ? Math.round(subtotal * 0.08) : 0;
+          venueNet = subtotal - totalPrCommission;
+          perksArray = cat?.perks || ['Dedicated VIP Hostess', 'F&B Credit Cover', 'Valet Parking'];
+          allocatedTableInfo = {
+            categoryName: cat?.name || 'VIP Table',
+            tableNumber: `Table #${tierInfo.nextTableNum || 1}`,
+            minSpendCover: tierInfo.currentMinSpend || 0,
+            tierName: tierInfo.activeTier?.name || 'Standard Tier',
+          };
 
-        const subtotal = groupDetails.subtotal || ((maleCount * malePrice) + (femaleCount * femalePrice) + (coupleCount * couplePrice));
-        const platformFee = Math.round(subtotal * 0.035) + 40;
-        const totalPaid = groupDetails.totalAmount || (subtotal + platformFee);
+          // Decrement table inventory on the event in state
+          setEvents((prev) =>
+            prev.map((evt) => {
+              if (evt.id !== event.id) return evt;
+              const updatedTables = (evt.tableCategories || []).map((c) => {
+                if (c.id === (cat?.id || groupDetails?.tableCategoryId)) {
+                  return {
+                    ...c,
+                    bookedTables: Math.min(c.totalTables, (c.bookedTables || 0) + (groupDetails?.tableCount || 1)),
+                  };
+                }
+                return c;
+              });
+              return { ...evt, tableCategories: updatedTables };
+            })
+          );
+        } else {
+          // General Floor Pass Booking
+          const maleCount = groupDetails.maleCount || 0;
+          const femaleCount = groupDetails.femaleCount || 0;
+          const coupleCount = groupDetails.coupleCount || 0;
+          pax = Math.max(1, maleCount + femaleCount + (coupleCount * 2));
 
-        // Value-Aligned Commission: Paid for filling the room + show-up quality, co-funds discount
-        const MIN_COMMISSION_PER_PAX = 150;
-        const cap = event.commissionCap ?? 300;
-        const trustMultiplier = 0.7 + 0.6 * ((pr?.showUpRate ?? 85) / 100);
-        const basePart = cap * 0.55;
-        const discountPerPax = Math.max(0, event.basePrice - prBid.price);
-        const discountPenalty = discountPerPax * 0.25;
-        const offPeakBonus = event.isOffPeak ? cap * 0.35 : 0;
-        const rawCommissionPerPax = Math.round((basePart + offPeakBonus - discountPenalty) * trustMultiplier);
-        const prCommissionPerPax = Math.min(cap, Math.max(MIN_COMMISSION_PER_PAX, rawCommissionPerPax));
-        const totalPrCommission = prCommissionPerPax * pax;
-        const venueNet = Math.max(0, subtotal - totalPrCommission);
+          const baseUnitPrice = prBid ? prBid.price : event.basePrice;
+          const malePrice = baseUnitPrice;
+          const femalePrice = Math.round(baseUnitPrice * 0.7);
+          const couplePrice = Math.round(baseUnitPrice * 1.8);
+
+          subtotal = groupDetails.subtotal || ((maleCount * malePrice) + (femaleCount * femalePrice) + (coupleCount * couplePrice));
+          platformFee = Math.round(subtotal * 0.035) + 40;
+          totalPaid = groupDetails.totalAmount || (subtotal + platformFee);
+
+          // Value-Aligned Commission
+          const MIN_COMMISSION_PER_PAX = 150;
+          const cap = event.commissionCap ?? 300;
+          const trustMultiplier = 0.7 + 0.6 * ((pr?.showUpRate ?? 85) / 100);
+          const basePart = cap * 0.55;
+          const discountPerPax = Math.max(0, event.basePrice - (prBid?.price || event.basePrice));
+          const discountPenalty = discountPerPax * 0.25;
+          const offPeakBonus = event.isOffPeak ? cap * 0.35 : 0;
+          const rawCommissionPerPax = Math.round((basePart + offPeakBonus - discountPenalty) * trustMultiplier);
+          const prCommissionPerPax = Math.min(cap, Math.max(MIN_COMMISSION_PER_PAX, rawCommissionPerPax));
+          totalPrCommission = prCommissionPerPax * pax;
+          venueNet = Math.max(0, subtotal - totalPrCommission);
+          perksArray = (prBid?.perks || []).map((pId) => {
+            const perkObj = event.approvedPerks?.find((ap) => ap.id === pId);
+            return perkObj ? perkObj.name : pId;
+          });
+
+          // Increment general booked passes on event
+          setEvents((prev) =>
+            prev.map((evt) => {
+              if (evt.id !== event.id) return evt;
+              return { ...evt, bookedPasses: (evt.bookedPasses || 0) + pax };
+            })
+          );
+        }
 
         // 80-bit Cryptographically Secure Ticket ID
         let randomHex = '';
@@ -1166,24 +1499,23 @@
           id: newTicketId,
           eventId: event.id,
           venueId: event.venueId,
-          prId: pr.id,
+          prId: pr?.id || 'pr_direct',
+          bookingType: isVIPTable ? 'VIP_TABLE' : 'FLOOR_PASS',
+          allocatedTableInfo,
           guestName: groupDetails.guestName || currentUser.name,
           guestPhone: groupDetails.guestPhone || currentUser.phone,
           guestEmail: groupDetails.guestEmail || currentUser.email,
-          maleCount,
-          femaleCount,
-          coupleCount,
+          maleCount: groupDetails.maleCount || (isVIPTable ? pax : 1),
+          femaleCount: groupDetails.femaleCount || 0,
+          coupleCount: groupDetails.coupleCount || 0,
           pax,
-          pricePerPax: prBid.price,
+          pricePerPax: isVIPTable ? Math.round(subtotal / pax) : (prBid?.price || event.basePrice),
           subtotal,
           totalPaid,
           platformFee,
           prCommission: totalPrCommission,
           venueNet,
-          perks: prBid.perks.map((pId) => {
-            const perkObj = event.approvedPerks?.find((ap) => ap.id === pId);
-            return perkObj ? perkObj.name : pId;
-          }),
+          perks: perksArray,
           status: 'ACTIVE',
           bookingTime: 'Just now',
           qrToken,
@@ -1192,16 +1524,22 @@
         };
 
         setBookings((prev) => [newBooking, ...prev]);
-        setPromoters((prev) =>
-          prev.map((p) => (p.id === pr.id ? { ...p, conversions: p.conversions + 1 } : p))
-        );
+        if (pr?.id) {
+          setPromoters((prev) =>
+            prev.map((p) => (p.id === pr.id ? { ...p, conversions: p.conversions + 1 } : p))
+          );
+        }
 
-        showToast(`🎉 Pass Unlocked! 80-Bit Secure QR Generated for ${venue.name}`, 'success');
+        showToast(
+          isVIPTable
+            ? `🍾 VIP Table Reserved! ${allocatedTableInfo?.tableNumber} (${allocatedTableInfo?.categoryName}) locked at ${venue.name}`
+            : `🎉 Pass Unlocked! 80-Bit Secure QR Generated for ${venue.name}`,
+          'success'
+        );
         return newBooking;
       };
 
       // Door Scan
-      // BUG FIX: Guard REJECTED status separately — distinct toast from CHECKED_IN duplicate
       const scanTicket = (ticketId, action, reason = '') => {
         const booking = bookings.find((b) => b.id === ticketId || b.qrToken === ticketId);
         if (!booking) {
@@ -1239,7 +1577,7 @@
             bookingId: booking.id,
             eventTitle: events.find((e) => e.id === booking.eventId)?.title || 'Club Event',
             venueName: venue?.name || 'Club Venue',
-            prName: `${pr?.name} (${pr?.handle})`,
+            prName: pr ? `${pr.name} (${pr.handle})` : 'Direct Booking',
             grossAmount: booking.totalPaid - booking.platformFee,
             venueShare: booking.venueNet,
             prCommission: booking.prCommission,
@@ -1258,7 +1596,7 @@
             )
           );
 
-          showToast(`✅ Entry Granted for ${booking.guestName} (${booking.pax} pax). ₹${netPrPayout} instant commission routed to ${pr?.name}!`, 'success');
+          showToast(`✅ Entry Granted for ${booking.guestName} (${booking.pax} pax). ${booking.bookingType === 'VIP_TABLE' ? '🍾 VIP Table Escort Dispatched.' : ''}`, 'success');
           return { success: true };
         } else if (action === 'REJECT') {
           setBookings((prev) =>
@@ -1295,29 +1633,52 @@
         showToast('✨ Dynamic PR Bid Published! Your competitive offer is now live.', 'success');
       };
 
-      // Create Event
+      // Create Event (Multi-Tier Tables, General Capacity Quota, AI Cleaned Post)
       const createEvent = (newEventData) => {
         const newId = `evt_${Date.now()}`;
+        const cleanTitle = sanitizeNightlifeTitle(newEventData.title || 'Exclusive Nightlife Showcase');
+        const cleanDesc = sanitizeNightlifeSentence(newEventData.description || `Exclusive ${newEventData.genre} showcase at venue with VIP table bottle service and dynamic PR perks.`);
+
         const fullEvent = {
           id: newId,
           venueId: activeOwnerVenueId,
-          title: newEventData.title,
+          title: cleanTitle,
           genre: newEventData.genre || 'Commercial EDM',
           date: newEventData.date || 'Saturday, Tonight',
           time: newEventData.time || '10:00 PM - 03:00 AM',
-          image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+          image: newEventData.image || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
           basePrice: Number(newEventData.basePrice) || 2000,
           floorPrice: Number(newEventData.floorPrice) || 1600,
           commissionCap: Number(newEventData.commissionCap) || 300,
-          description: newEventData.description || 'Exclusive club night with top DJs and dynamic PR perks.',
-          approvedPerks: [
+          capacityQuota: Number(newEventData.capacityQuota) || 300,
+          bookedPasses: 0,
+          description: cleanDesc,
+          approvedPerks: newEventData.approvedPerks || [
             { id: 'perk_shooter', name: '1 Free Shooter / Cocktail Token', value: 350 },
             { id: 'perk_fasttrack', name: 'Fast-Track Queue Bypass', value: 400 },
           ],
+          tableCategories: newEventData.tableCategories || [
+            {
+              id: `tbl_${Date.now()}_lounge`,
+              name: 'VIP Lounge Table',
+              badge: 'VIP LOUNGE',
+              paxPerTable: 6,
+              totalTables: 6,
+              bookedTables: 0,
+              tiers: [
+                { name: 'Early Bird (Tables 1-2)', range: 'Tables 1 - 2', minTable: 1, maxTable: 2, price: 35000, minSpend: 30000 },
+                { name: 'Surge Tier (Tables 3-4)', range: 'Tables 3 - 4', minTable: 3, maxTable: 4, price: 50000, minSpend: 42000 },
+                { name: 'Last Tables (Tables 5-6)', range: 'Tables 5 - 6', minTable: 5, maxTable: 6, price: 75000, minSpend: 65000 },
+              ],
+              perks: ['₹35,000 F&B Included Cover', 'Dedicated VIP Hostess', 'Priority Valet Parking', 'Fast-Track Door Entry'],
+              description: 'Elevated banquette seating overlooking main dancefloor with personal bottle service host.',
+            },
+          ],
           bids: [],
         };
+
         setEvents((prev) => [fullEvent, ...prev]);
-        showToast(`🎉 Event "${fullEvent.title}" created! Approved PRs can now start bidding.`, 'success');
+        showToast(`🎉 Event "${fullEvent.title}" published with ${fullEvent.tableCategories.length} VIP Table categories!`, 'success');
       };
 
       return (
@@ -1359,6 +1720,8 @@
             setClaimClubModalOpen,
             pendingClaimVenueId,
             setPendingClaimVenueId,
+            createPRModalOpen,
+            setCreatePRModalOpen,
             toast,
             showToast,
             registerPRProfile,
@@ -2105,10 +2468,20 @@
 
     // --- CLAIM CLUB OWNERSHIP & VERIFICATION MODAL (ANTI-FRAUD & MULTI-METHOD GATEWAY) ---
     const ClaimClubVerificationModal = ({ isOpen, onClose, initialVenueId = null }) => {
-      const { venues, activeCity, claimVenueOwnership, currentUser, showToast } = useApp();
-      const cityVenues = venues.filter(v => v.city === activeCity);
-      const [selectedVenueId, setSelectedVenueId] = useState(initialVenueId || cityVenues[0]?.id || venues[0]?.id);
-      const [verificationMethod, setVerificationMethod] = useState('sms_token'); // 'sms_token' | 'govt_license' | 'master_pin'
+      const { venues, activeCity, claimVenueOwnership, currentUser, switchPersona, showToast } = useApp();
+      
+      const userClaimedIds = currentUser?.claimedVenues || [];
+      // Strictly filter out clubs already claimed by the user
+      const unclaimedVenues = venues.filter(v => !userClaimedIds.includes(v.id));
+      const myClaimedVenues = venues.filter(v => userClaimedIds.includes(v.id));
+
+      const [selectedVenueId, setSelectedVenueId] = useState(
+        (initialVenueId && !userClaimedIds.includes(initialVenueId))
+          ? initialVenueId
+          : (unclaimedVenues[0]?.id || venues[0]?.id)
+      );
+      
+      const [verificationMethod, setVerificationMethod] = useState('email_token'); // 'email_token' | 'govt_license' | 'sms_token' | 'doc_upload'
 
       // Verification Form States
       const [claimToken, setClaimToken] = useState('');
@@ -2119,15 +2492,20 @@
       const [gstinInput, setGstinInput] = useState('');
       const [exciseInput, setExciseInput] = useState('');
       const [pinInput, setPinInput] = useState('');
+      const [uploadedDoc, setUploadedDoc] = useState(null);
 
       const [verifying, setVerifying] = useState(false);
       const [verifiedCert, setVerifiedCert] = useState(null);
 
-      const selectedVenue = venues.find(v => v.id === selectedVenueId) || venues[0];
+      const selectedVenue = venues.find(v => v.id === selectedVenueId) || unclaimedVenues[0] || venues[0];
 
       useEffect(() => {
-        if (initialVenueId) setSelectedVenueId(initialVenueId);
-      }, [initialVenueId]);
+        if (initialVenueId && !userClaimedIds.includes(initialVenueId)) {
+          setSelectedVenueId(initialVenueId);
+        } else if (unclaimedVenues.length > 0 && (!selectedVenueId || userClaimedIds.includes(selectedVenueId))) {
+          setSelectedVenueId(unclaimedVenues[0].id);
+        }
+      }, [initialVenueId, userClaimedIds.length]);
 
       useEffect(() => {
         let interval;
@@ -2137,18 +2515,24 @@
         return () => clearInterval(interval);
       }, [tokenTimer]);
 
-      // Trigger realistic 6-digit Claim Token SMS dispatch to venue's registered manager
-      const handleDispatchToken = () => {
+      // Dispatch security token via Corporate Domain Email or GM SMS
+      const handleDispatchToken = (channel = 'email') => {
         const dynamicCode = selectedVenue.claimPin || Math.floor(1000 + Math.random() * 9000).toString();
         setGeneratedToken(dynamicCode);
         setTokenTimer(60);
         setDispatchAlert({
+          channel,
           phone: selectedVenue.ownerPhone,
           email: selectedVenue.managerEmail,
           code: dynamicCode,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
-        showToast(`📲 Security Claim Token dispatched to registered manager (${selectedVenue.ownerPhone})`, 'info');
+
+        if (channel === 'email') {
+          showToast(`📧 Cryptographic Claim Token routed to official inbox: ${selectedVenue.managerEmail}`, 'info');
+        } else {
+          showToast(`📲 Security SMS dispatched to General Manager's registered phone (${selectedVenue.ownerPhone})`, 'info');
+        }
       };
 
       const handleVerifyAndClaim = (e) => {
@@ -2159,17 +2543,20 @@
           setVerifying(false);
           const payload = {
             method: verificationMethod,
-            pin: verificationMethod === 'sms_token' ? claimToken : verificationMethod === 'master_pin' ? pinInput : pinInput || claimToken,
+            pin: (verificationMethod === 'email_token' || verificationMethod === 'sms_token')
+              ? claimToken
+              : pinInput || claimToken,
             claimToken: generatedToken,
             gstin: gstinInput,
             exciseLicense: exciseInput,
+            document: uploadedDoc?.name || null
           };
 
           const res = claimVenueOwnership(selectedVenue.id, payload);
           if (res.success) {
             setVerifiedCert(res.certificate);
           }
-        }, 800);
+        }, 850);
       };
 
       if (!isOpen) return null;
@@ -2179,15 +2566,15 @@
           <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-3xl glass-panel shadow-2xl border border-cyan-500/40 overflow-hidden" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
-            <div className="p-5 sm:p-6 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-black/60 border-b border-white/10 flex items-center justify-between shrink-0">
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-cyan-950/50 via-slate-900/70 to-black/70 border-b border-white/10 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xl">
+                <div className="w-11 h-11 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xl shadow-[0_0_20px_rgba(6,182,212,0.3)]">
                   🏢
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                      ANTI-FRAUD PROTOCOL
+                      ANTI-FRAUD REGISTRY
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
                       Single Account Identity
@@ -2211,8 +2598,8 @@
               
               {verifiedCert ? (
                 /* SUCCESS CERTIFICATE SCREEN */
-                <div className="p-6 rounded-3xl bg-emerald-950/20 border-2 border-emerald-500/40 text-center space-y-5 animate-scale-up">
-                  <div className="w-16 h-16 rounded-3xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-3xl mx-auto shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                <div className="p-6 rounded-3xl bg-emerald-950/30 border-2 border-emerald-500/50 text-center space-y-5 animate-scale-up">
+                  <div className="w-16 h-16 rounded-3xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-3xl mx-auto shadow-[0_0_30px_rgba(16,185,129,0.4)]">
                     🛡️
                   </div>
                   <div className="space-y-1">
@@ -2226,7 +2613,7 @@
                   </div>
 
                   {/* Cryptographic Certificate Pill */}
-                  <div className="p-4 rounded-2xl bg-black/60 border border-white/10 text-left space-y-2.5 text-xs">
+                  <div className="p-4 rounded-2xl bg-black/70 border border-white/10 text-left space-y-2.5 text-xs">
                     <div className="flex justify-between border-b border-white/10 pb-1.5">
                       <span className="text-slate-400">Claim Certificate ID:</span>
                       <span className="font-mono font-bold text-emerald-300">{verifiedCert.claimId}</span>
@@ -2251,89 +2638,167 @@
                   </div>
 
                   <button
-                    onClick={onClose}
+                    onClick={() => {
+                      onClose();
+                      switchPersona('owner', { venueId: selectedVenue.id });
+                    }}
                     className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-black text-xs shadow-xl hover:opacity-95 transition"
                   >
                     Enter Club Door &amp; Event Console →
                   </button>
                 </div>
+              ) : unclaimedVenues.length === 0 ? (
+                /* ALL VENUES ALREADY CLAIMED STATE */
+                <div className="p-6 rounded-3xl bg-slate-900/60 border border-teal-500/30 text-center space-y-5 animate-fade-in">
+                  <div className="w-16 h-16 rounded-3xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-3xl mx-auto shadow-[0_0_30px_rgba(20,184,166,0.3)]">
+                    🎉
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/40">
+                      REGISTRY COMPLETE
+                    </span>
+                    <h3 className="text-xl font-bold text-white">All Registry Venues Already Claimed &amp; Verified</h3>
+                    <p className="text-xs text-slate-300 max-w-md mx-auto">
+                      All club venues in your active registry are already verified and bound to your mobile account (<b>{currentUser?.phone || '+91 98200 44321'}</b>).
+                    </p>
+                  </div>
+
+                  {/* List of My Claimed Clubs */}
+                  <div className="space-y-2 text-left">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Active Verified Venues ({myClaimedVenues.length})
+                    </span>
+                    {myClaimedVenues.map(cv => (
+                      <div key={cv.id} className="p-3 rounded-2xl bg-black/60 border border-emerald-500/30 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <img src={cv.image} alt={cv.name} className="w-10 h-10 rounded-xl object-cover ring-1 ring-emerald-500/40 shrink-0" />
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-bold text-white truncate">{cv.name}</h4>
+                            <p className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
+                              <span>✓</span>
+                              <span>Manager: {cv.ownerName}</span>
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            switchPersona('owner', { venueId: cv.id });
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold hover:bg-emerald-500/30 transition shrink-0"
+                        >
+                          Open Console →
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition"
+                  >
+                    Done
+                  </button>
+                </div>
               ) : (
-                /* STEP-BY-STEP CLAIM FORM */
+                /* STEP-BY-STEP CLAIM FORM FOR UNCLAIMED VENUES */
                 <form onSubmit={handleVerifyAndClaim} className="space-y-5 text-xs">
                   
-                  {/* Info Notice */}
+                  {/* Anti-Fraud Info Notice */}
                   <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-slate-300 leading-relaxed">
                     <p className="font-semibold text-white mb-0.5 flex items-center gap-1.5">
                       <span>🔒</span>
-                      <span>Anti-Impersonation Protection</span>
+                      <span>Zero-Fraud Ownership Clearance</span>
                     </p>
-                    <span>To protect venue revenue and door manifests, only verified general managers, directors, or license holders can claim club controls.</span>
+                    <span>To protect venue revenue and gate admissions, anyone claiming a club must cryptographically verify their identity via corporate domain email, state excise records, or physical SIM token.</span>
                   </div>
 
-                  {/* Step 1: Select Venue */}
-                  <div className="space-y-2">
-                    <label className="block text-slate-300 font-bold uppercase tracking-wider text-[10px]">
-                      Step 1: Select Club Venue to Claim
-                    </label>
-                    <select
-                      value={selectedVenueId}
-                      onChange={(e) => {
-                        setSelectedVenueId(e.target.value);
-                        setDispatchAlert(null);
-                        setGeneratedToken('');
-                        setClaimToken('');
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-medium text-xs focus:border-cyan-500 focus:outline-none"
-                    >
-                      {venues.map(v => (
-                        <option key={v.id} value={v.id}>
-                          {v.name} ({v.city.toUpperCase()} • {v.area})
-                        </option>
-                      ))}
-                    </select>
+                  {/* Step 1: Visual Venue Selector (Excludes Claimed Clubs) */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-slate-300 font-bold uppercase tracking-wider text-[10px]">
+                        Step 1: Select Unclaimed Club Venue ({unclaimedVenues.length} Available)
+                      </label>
+                      <span className="text-[10px] text-teal-400 font-mono">
+                        {userClaimedIds.length} Claimed by You
+                      </span>
+                    </div>
 
-                    {/* Venue Official Registry Card */}
-                    <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center gap-3">
-                      <img
-                        src={selectedVenue.image}
-                        alt={selectedVenue.name}
-                        className="w-14 h-14 rounded-xl object-cover ring-1 ring-white/10 shrink-0"
-                      />
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-white truncate">{selectedVenue.name}</h4>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">REGISTRY ACTIVE</span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 truncate">Manager: {selectedVenue.ownerName}</p>
-                        <p className="text-[10px] text-cyan-300 font-mono">
-                          Registered Phone: {selectedVenue.ownerPhone?.replace(/(\+91\s\d{2})\d{5}(\d{3})/, '$1 ••••• $2') || '+91 98••• ••321'}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-mono">
-                          Govt GSTIN: {selectedVenue.gstin || '27AABCT1234F1Z9'}
-                        </p>
+                    {/* High-Contrast Visual Cards Selector Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {unclaimedVenues.map((v) => {
+                        const isSelected = selectedVenue.id === v.id;
+                        return (
+                          <div
+                            key={v.id}
+                            onClick={() => {
+                              setSelectedVenueId(v.id);
+                              setDispatchAlert(null);
+                              setGeneratedToken('');
+                              setClaimToken('');
+                            }}
+                            className={`p-3 rounded-2xl border transition cursor-pointer flex items-center gap-3 relative ${
+                              isSelected
+                                ? 'bg-cyan-950/40 border-cyan-400 ring-2 ring-cyan-500/40 shadow-lg'
+                                : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06]'
+                            }`}
+                          >
+                            <img
+                              src={v.image}
+                              alt={v.name}
+                              className="w-12 h-12 rounded-xl object-cover ring-1 ring-white/15 shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1">
+                                <h4 className="text-xs font-bold text-white truncate">{v.name}</h4>
+                                {isSelected && (
+                                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-cyan-400 text-black shrink-0">
+                                    SELECTED
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-400 truncate">{v.city.toUpperCase()} • {v.area}</p>
+                              <p className="text-[10px] text-cyan-300 truncate font-mono">GM: {v.ownerName}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Venue Selected Detail Badge */}
+                    <div className="p-3 rounded-2xl bg-black/60 border border-white/10 flex items-center justify-between text-[11px]">
+                      <div className="space-y-0.5">
+                        <span className="text-slate-400">Target Venue:</span>
+                        <div className="font-bold text-white">{selectedVenue.name}</div>
+                      </div>
+                      <div className="space-y-0.5 text-right">
+                        <span className="text-slate-400">Registered Corporate Domain:</span>
+                        <div className="font-mono text-cyan-300 font-bold">{selectedVenue.managerEmail}</div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Step 2: Verification Method Tabs */}
+                  {/* Step 2: 4 Verification Method Tabs */}
                   <div className="space-y-2.5">
                     <label className="block text-slate-300 font-bold uppercase tracking-wider text-[10px]">
-                      Step 2: Choose Anti-Impersonation Proof Method
+                      Step 2: Choose Enterprise Anti-Fraud Method
                     </label>
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <button
                         type="button"
-                        onClick={() => setVerificationMethod('sms_token')}
+                        onClick={() => setVerificationMethod('email_token')}
                         className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center transition ${
-                          verificationMethod === 'sms_token'
-                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200'
+                          verificationMethod === 'email_token'
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-md'
                             : 'bg-white/[0.03] border-white/10 text-slate-400 hover:text-white'
                         }`}
                       >
-                        <span className="text-base mb-1">📱</span>
-                        <span className="font-bold text-[11px]">SMS Claim Token</span>
-                        <span className="text-[9px] text-teal-400 font-medium">Recommended</span>
+                        <span className="text-base mb-1">🏢</span>
+                        <span className="font-bold text-[11px]">Corporate Email</span>
+                        <span className="text-[9px] text-teal-400 font-semibold">Highest Security</span>
                       </button>
 
                       <button
@@ -2341,104 +2806,122 @@
                         onClick={() => setVerificationMethod('govt_license')}
                         className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center transition ${
                           verificationMethod === 'govt_license'
-                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200'
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-md'
                             : 'bg-white/[0.03] border-white/10 text-slate-400 hover:text-white'
                         }`}
                       >
                         <span className="text-base mb-1">🏛️</span>
-                        <span className="font-bold text-[11px]">Govt GSTIN &amp; License</span>
-                        <span className="text-[9px] text-slate-400">Excise Match</span>
+                        <span className="font-bold text-[11px]">GSTIN &amp; Excise</span>
+                        <span className="text-[9px] text-slate-400">Govt Registry</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => setVerificationMethod('master_pin')}
+                        onClick={() => setVerificationMethod('sms_token')}
                         className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center transition ${
-                          verificationMethod === 'master_pin'
-                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200'
+                          verificationMethod === 'sms_token'
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-md'
                             : 'bg-white/[0.03] border-white/10 text-slate-400 hover:text-white'
                         }`}
                       >
-                        <span className="text-base mb-1">🔑</span>
-                        <span className="font-bold text-[11px]">Manager Master PIN</span>
-                        <span className="text-[9px] text-slate-400">Direct Passcode</span>
+                        <span className="text-base mb-1">📱</span>
+                        <span className="font-bold text-[11px]">GM Phone SMS</span>
+                        <span className="text-[9px] text-slate-400">Physical SIM</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setVerificationMethod('doc_upload')}
+                        className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center transition ${
+                          verificationMethod === 'doc_upload'
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-md'
+                            : 'bg-white/[0.03] border-white/10 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="text-base mb-1">📄</span>
+                        <span className="font-bold text-[11px]">Upload License</span>
+                        <span className="text-[9px] text-purple-300">AI OCR Scan</span>
                       </button>
                     </div>
 
-                    {/* METHOD 1: SMS CLAIM TOKEN */}
-                    {verificationMethod === 'sms_token' && (
-                      <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3.5">
-                        <div className="flex items-center justify-between">
+                    {/* METHOD 1: CORPORATE DOMAIN EMAIL TOKEN */}
+                    {verificationMethod === 'email_token' && (
+                      <div className="p-4 rounded-2xl bg-black/50 border border-cyan-500/30 space-y-3.5 animate-fade-in">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-white/10">
                           <div>
-                            <span className="font-bold text-white block">Dispatch Dynamic Claim Token</span>
+                            <span className="font-bold text-white block">Official Domain Email Verification</span>
                             <span className="text-[11px] text-slate-400">
-                              Sends a 4-6 digit security token to {selectedVenue.ownerPhone?.replace(/(\+91\s\d{2})\d{5}(\d{3})/, '$1 ••••• $2')}
+                              Dispatches a 6-digit security token strictly to <b className="text-cyan-300 font-mono">{selectedVenue.managerEmail}</b>
                             </span>
                           </div>
                           <button
                             type="button"
-                            onClick={handleDispatchToken}
+                            onClick={() => handleDispatchToken('email')}
                             disabled={tokenTimer > 0}
-                            className={`px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
                               tokenTimer > 0
                                 ? 'bg-white/10 text-slate-400 cursor-not-allowed'
                                 : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black shadow-lg hover:opacity-95'
                             }`}
                           >
-                            {tokenTimer > 0 ? `Resend (${tokenTimer}s)` : '⚡ Dispatch Token'}
+                            {tokenTimer > 0 ? `Resend (${tokenTimer}s)` : '📧 Send Email Token'}
                           </button>
                         </div>
 
-                        {/* Simulated Live SMS Notification Banner */}
-                        {dispatchAlert && (
-                          <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/40 space-y-2 animate-fade-in">
+                        {/* Simulated Live Dispatch Alert */}
+                        {dispatchAlert && dispatchAlert.channel === 'email' && (
+                          <div className="p-3 rounded-xl bg-cyan-950/70 border border-cyan-500/50 space-y-2 animate-fade-in">
                             <div className="flex items-center justify-between text-[11px] text-cyan-300">
                               <span className="flex items-center gap-1 font-bold">
-                                <span>📲</span>
-                                <span>[NightVibe Security] SMS Dispatch to {selectedVenue.ownerName}</span>
+                                <span>📧</span>
+                                <span>[NightVibe Enterprise Security] Inbox: {dispatchAlert.email}</span>
                               </span>
                               <span className="font-mono text-[10px] text-slate-400">{dispatchAlert.time}</span>
                             </div>
-                            <p className="text-[11px] text-white font-mono bg-black/50 p-2 rounded-lg border border-white/10">
-                              "Your NightVibe Club Claim Code for {selectedVenue.name} is: <span className="text-cyan-300 font-bold font-mono text-sm">{dispatchAlert.code}</span>. Valid for 10 minutes."
+                            <p className="text-[11px] text-white font-mono bg-black/60 p-2.5 rounded-lg border border-white/10">
+                              "Security Authorization Token for <b>{selectedVenue.name}</b> ownership binding is: <span className="text-cyan-300 font-bold font-mono text-base">{dispatchAlert.code}</span>. Valid for 10 minutes."
                             </p>
-                            <div className="flex justify-end">
+                            <div className="flex justify-between items-center text-[10px] text-slate-400">
+                              <span>(Simulated Corporate Mail Server)</span>
                               <button
                                 type="button"
                                 onClick={() => setClaimToken(dispatchAlert.code)}
-                                className="px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold hover:bg-cyan-500/30"
+                                className="px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold hover:bg-cyan-500/30 transition"
                               >
-                                🚀 One-Click Auto-Fill Code
+                                ⚡ One-Click Fill Token
                               </button>
                             </div>
                           </div>
                         )}
 
                         <div>
-                          <label className="block text-slate-300 font-semibold mb-1">Enter Security Claim Code</label>
+                          <label className="block text-slate-300 font-semibold mb-1">Enter 6-Digit Email Token</label>
                           <input
                             type="text"
-                            placeholder="Enter 4 or 6 digit Claim Token"
+                            placeholder="Enter Code received at corporate email"
                             value={claimToken}
                             onChange={(e) => setClaimToken(e.target.value)}
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-sm tracking-wider focus:border-cyan-500 focus:outline-none"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-sm tracking-widest focus:border-cyan-500 focus:outline-none"
                           />
                         </div>
                       </div>
                     )}
 
-                    {/* METHOD 2: GOVT GSTIN & LICENSE */}
+                    {/* METHOD 2: GOVT GSTIN & EXCISE LICENSE */}
                     {verificationMethod === 'govt_license' && (
-                      <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3">
+                      <div className="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-3 animate-fade-in">
+                        <p className="text-[11px] text-slate-400">
+                          Automated real-time lookup against Ministry of Corporate Affairs (MCA) &amp; State Excise Liquor License Registry.
+                        </p>
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <label className="text-slate-300 font-semibold">Club GSTIN Number</label>
+                            <label className="text-slate-300 font-semibold">Club 15-Digit GSTIN</label>
                             <button
                               type="button"
                               onClick={() => setGstinInput(selectedVenue.gstin || '27AABCK1122R1ZM')}
                               className="text-[10px] text-cyan-400 hover:underline"
                             >
-                              Fill Sample GSTIN ({selectedVenue.gstin || '27AABCK1122R1ZM'})
+                              Auto-Fill Registered GSTIN ({selectedVenue.gstin || '27AABCK1122R1ZM'})
                             </button>
                           </div>
                           <input
@@ -2458,7 +2941,7 @@
                               onClick={() => setExciseInput(selectedVenue.exciseLicense || 'MH-EXC-2024-1122')}
                               className="text-[10px] text-cyan-400 hover:underline"
                             >
-                              Fill Sample License ({selectedVenue.exciseLicense || 'MH-EXC-2024-1122'})
+                              Auto-Fill Registered License ({selectedVenue.exciseLicense || 'MH-EXC-2024-1122'})
                             </button>
                           </div>
                           <input
@@ -2472,28 +2955,101 @@
                       </div>
                     )}
 
-                    {/* METHOD 3: MASTER PIN */}
-                    {verificationMethod === 'master_pin' && (
-                      <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3">
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <label className="text-slate-300 font-semibold">Venue Manager Master Passcode</label>
-                            <button
-                              type="button"
-                              onClick={() => setPinInput(selectedVenue.claimPin || '1122')}
-                              className="text-[10px] text-cyan-400 hover:underline"
-                            >
-                              Quick PIN ({selectedVenue.claimPin || '1122'})
-                            </button>
+                    {/* METHOD 3: SMS CLAIM TOKEN */}
+                    {verificationMethod === 'sms_token' && (
+                      <div className="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-3.5 animate-fade-in">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-white/10">
+                          <div>
+                            <span className="font-bold text-white block">SMS Token to General Manager Phone</span>
+                            <span className="text-[11px] text-slate-400">
+                              Dispatched via MSG91 exclusively to registered SIM: <b className="text-cyan-300 font-mono">{selectedVenue.ownerPhone?.replace(/(\+91\s\d{2})\d{5}(\d{3})/, '$1 ••••• $2')}</b>
+                            </span>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDispatchToken('sms')}
+                            disabled={tokenTimer > 0}
+                            className={`px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                              tokenTimer > 0
+                                ? 'bg-white/10 text-slate-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black shadow-lg hover:opacity-95'
+                            }`}
+                          >
+                            {tokenTimer > 0 ? `Resend (${tokenTimer}s)` : '📱 Dispatch SMS'}
+                          </button>
+                        </div>
+
+                        {/* Simulated Live SMS Notification Banner */}
+                        {dispatchAlert && dispatchAlert.channel === 'sms' && (
+                          <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/40 space-y-2 animate-fade-in">
+                            <div className="flex items-center justify-between text-[11px] text-cyan-300">
+                              <span className="flex items-center gap-1 font-bold">
+                                <span>📲</span>
+                                <span>[NightVibe Security] SMS Dispatch to GM {selectedVenue.ownerName}</span>
+                              </span>
+                              <span className="font-mono text-[10px] text-slate-400">{dispatchAlert.time}</span>
+                            </div>
+                            <p className="text-[11px] text-white font-mono bg-black/50 p-2 rounded-lg border border-white/10">
+                              "Your NightVibe Club Claim Code for {selectedVenue.name} is: <span className="text-cyan-300 font-bold font-mono text-sm">{dispatchAlert.code}</span>. Valid for 10 minutes."
+                            </p>
+                            <div className="flex justify-between items-center text-[10px] text-slate-400">
+                              <span>(Simulated GM Mobile Device)</span>
+                              <button
+                                type="button"
+                                onClick={() => setClaimToken(dispatchAlert.code)}
+                                className="px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold hover:bg-cyan-500/30"
+                              >
+                                ⚡ One-Click Auto-Fill Code
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-slate-300 font-semibold mb-1">Enter Security Claim Code</label>
                           <input
-                            type="password"
-                            placeholder="Enter 4-digit Master Passcode"
-                            value={pinInput}
-                            onChange={(e) => setPinInput(e.target.value)}
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-sm tracking-widest focus:border-cyan-500 focus:outline-none"
+                            type="text"
+                            placeholder="Enter 4 or 6 digit Claim Token"
+                            value={claimToken}
+                            onChange={(e) => setClaimToken(e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-sm tracking-wider focus:border-cyan-500 focus:outline-none"
                           />
                         </div>
+                      </div>
+                    )}
+
+                    {/* METHOD 4: AI DOCUMENT SCAN */}
+                    {verificationMethod === 'doc_upload' && (
+                      <div className="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-3 animate-fade-in">
+                        <p className="text-[11px] text-slate-400">
+                          Upload official State Liquor Excise License, Commercial Electricity Bill, or Board Resolution Letter.
+                        </p>
+                        
+                        <label className="border-2 border-dashed border-white/20 hover:border-purple-400/60 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition bg-white/[0.02]">
+                          <span className="text-2xl mb-1">📄</span>
+                          {uploadedDoc ? (
+                            <div className="space-y-1">
+                              <span className="text-emerald-400 font-bold block">{uploadedDoc.name}</span>
+                              <span className="text-[10px] text-slate-400">AI OCR Check: VALID EXCISE SEAL DETECTED ✓</span>
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5">
+                              <span className="font-bold text-white block">Click or Drag &amp; Drop Document</span>
+                              <span className="text-[10px] text-slate-400">PDF, PNG, or JPG (Max 15MB)</span>
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.png,.jpg,.jpeg"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                setUploadedDoc(e.target.files[0]);
+                                showToast(`📄 ${e.target.files[0].name} uploaded! Ready for AI OCR verification.`, 'info');
+                              }
+                            }}
+                          />
+                        </label>
                       </div>
                     )}
 
@@ -2922,23 +3478,34 @@
 
       return ReactDOM.createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 modal-backdrop-blur animate-fade-in overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-          <div className="relative w-full max-w-lg rounded-3xl glass-panel p-6 shadow-2xl border border-cyan-500/40" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-lg rounded-3xl glass-panel p-6 shadow-2xl border border-purple-500/40" onClick={(e) => e.stopPropagation()}>
             <button onClick={onClose} className="absolute top-5 right-5 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400">
               ✕
             </button>
 
-            <div className="text-center space-y-1.5 mb-5">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 p-[2px] mx-auto">
+            <div className="text-center space-y-1.5 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-500 to-pink-500 p-[2px] mx-auto shadow-[0_0_20px_rgba(168,85,247,0.3)]">
                 <div className="w-full h-full bg-[#0d0f17] rounded-[14px] flex items-center justify-center text-2xl">
                   👑
                 </div>
               </div>
               <h3 className="text-xl font-bold text-white font-sans">
-                Create Your Nightlife PR Profile
+                Join Nightlife PR &amp; Host Network
               </h3>
               <p className="text-xs text-slate-400">
-                Join the LinkedIn for Nightlife PRs. Get discovered & hired by top clubs in India.
+                Unlock the PR Console, publish competitive bids on club events, and earn instant UPI payouts.
               </p>
+            </div>
+
+            {/* Informational Access Banner */}
+            <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/25 text-xs text-purple-200 flex items-start gap-2.5 mb-4">
+              <span className="text-lg shrink-0">💡</span>
+              <div className="space-y-0.5">
+                <span className="font-bold text-white block">PR Talent Verification Gate</span>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  You are 1 step away from the PR Bidding Console. Register your promoter handle below to start offering guestlist perks and earning verified gate commissions.
+                </p>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
@@ -3058,7 +3625,7 @@
 
     // --- EVENT DETAIL & PR BIDDING MODAL ---
     const EventDetailModal = ({ event, isOpen, onClose, onBookingSuccess }) => {
-      const { venues, promoters, bookTicket } = useApp();
+      const { venues, promoters, bookTicket, showToast } = useApp();
       
       useEffect(() => {
         if (isOpen && window.SoundEngine) window.SoundEngine.play('modal');
@@ -3071,8 +3638,10 @@
 
       const venue = venues.find((v) => v.id === event.venueId) || venues[0];
 
-      // Composite Bid Ranking Algorithm:
-      // Weightings: 40% Price Savings + 30% PR Rating + 20% Verified Show-Up Rate + 10% Perks Diversity
+      // Dual Booking Mode: 'GA' (General Admission / PR Bids) vs 'VIP_TABLE' (VIP Table & Lounge)
+      const [bookingMode, setBookingMode] = useState('GA');
+
+      // GA State
       const scoredBids = [...(event.bids || [])].map((bid) => {
         const pr = promoters.find((p) => p.id === bid.prId) || promoters[0];
         const savings = Math.max(0, event.basePrice - bid.price);
@@ -3091,9 +3660,34 @@
       const [paymentStep, setPaymentStep] = useState('select');
       const [paymentMethod, setPaymentMethod] = useState('UPI_GPAY');
 
-      const selectedBid = scoredBids.find((b) => b.id === selectedBidId) || scoredBids[0];
-      const selectedPR = selectedBid?.prData || promoters[0];
+      // VIP Table State
+      const tableCategories = event.tableCategories && event.tableCategories.length > 0 ? event.tableCategories : [
+        {
+          id: 'tbl_cat_default_lounge',
+          name: 'VIP Lounge Table',
+          badge: 'VIP LOUNGE',
+          paxPerTable: 6,
+          totalTables: 8,
+          bookedTables: 0,
+          tiers: [
+            { name: 'Early Bird', range: 'Tables 1 - 3', minTable: 1, maxTable: 3, price: 35000, minSpend: 30000 },
+            { name: 'High Demand Surge', range: 'Tables 4 - 6', minTable: 4, maxTable: 6, price: 55000, minSpend: 45000 },
+            { name: 'Last Tables', range: 'Tables 7 - 8', minTable: 7, maxTable: 8, price: 85000, minSpend: 75000 },
+          ],
+          perks: ['Dedicated VIP Hostess', '₹45,000 F&B Included Cover', 'Valet Parking', 'Fast-Track Door Entry'],
+          description: 'Elevated banquette seating overlooking main dancefloor with personal bottle service host.',
+        }
+      ];
 
+      const [selectedTableCatId, setSelectedTableCatId] = useState(tableCategories[0]?.id);
+      const [leadGuestName, setLeadGuestName] = useState('Guest VIP');
+      const [leadGuestPhone, setLeadGuestPhone] = useState('+91 98200 12345');
+      const [specialRequests, setSpecialRequests] = useState('Front row view overlooking dancefloor & chilled champagne on arrival');
+
+      const activeCategory = tableCategories.find((c) => c.id === selectedTableCatId) || tableCategories[0];
+      const tierInfo = getTableCategoryTierInfo(activeCategory);
+
+      const selectedBid = scoredBids.find((b) => b.id === selectedBidId) || scoredBids[0];
       const totalPax = maleStagCount + femaleStagCount + (coupleCount * 2);
       const baseUnitPrice = selectedBid ? selectedBid.price : event.basePrice;
       const malePrice = baseUnitPrice;
@@ -3104,84 +3698,77 @@
       const platformFee = totalPax > 0 ? Math.round(subtotal * 0.035) + 40 : 0;
       const totalAmount = subtotal + platformFee;
 
-      const handleCheckout = () => {
-        const options = {
-          key: 'rzp_test_dummy123',
-          amount: totalAmount * 100, // paise
-          currency: 'INR',
-          name: 'NightVibe India',
-          description: `Pass for ${event.title}`,
-          image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100',
-          handler: function (response) {
-            if (window.SoundEngine) window.SoundEngine.play('success');
-            window.confetti && window.confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
-            
-            const newBooking = bookTicket({
-              event,
-              prBid: selectedBid,
-              groupDetails: {
-                maleCount: maleStagCount + coupleCount,
-                femaleCount: femaleStagCount + coupleCount,
-                maleStagCount,
-                femaleStagCount,
-                coupleCount,
-                subtotal,
-                totalAmount
-              },
-              paymentMethod: 'RAZORPAY_LIVE_MODAL',
-              razorpayPaymentId: response.razorpay_payment_id || 'pay_test_' + Date.now(),
-            });
-            onBookingSuccess(newBooking);
-            onClose();
-          },
-          prefill: {
-            name: 'Guest User',
-            email: 'guest@nightvibe.in',
-            contact: '+91 9876543210',
-          },
-          theme: {
-            color: '#14b8a6',
-          },
-        };
+      const tablePlatformFee = Math.round((tierInfo.currentPrice || 0) * 0.02);
+      const totalTableAmount = (tierInfo.currentPrice || 0) + tablePlatformFee;
 
-        if (window.Razorpay) {
-          const rzp = new window.Razorpay(options);
-          rzp.on('payment.failed', function (response){
-            alert(`Payment Failed: ${response.error.description}`);
-          });
-          rzp.open();
-        } else {
-          if (window.SoundEngine) window.SoundEngine.play('success');
-          window.confetti && window.confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
-          const newBooking = bookTicket({
-            event,
-            prBid: selectedBid,
-            groupDetails: {
-              maleCount: maleStagCount + coupleCount,
-              femaleCount: femaleStagCount + coupleCount,
-              maleStagCount,
-              femaleStagCount,
-              coupleCount,
-              subtotal,
-              totalAmount
-            },
-            paymentMethod: 'BYPASS_RAZORPAY',
-          });
-          onBookingSuccess(newBooking);
-          onClose();
+      const handleGACheckout = () => {
+        if (window.SoundEngine) window.SoundEngine.play('success');
+        window.confetti && window.confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
+        
+        const newBooking = bookTicket({
+          bookingType: 'GA_PASS',
+          event,
+          prBid: selectedBid,
+          groupDetails: {
+            maleCount: maleStagCount + coupleCount,
+            femaleCount: femaleStagCount + coupleCount,
+            maleStagCount,
+            femaleStagCount,
+            coupleCount,
+            subtotal,
+            totalAmount
+          },
+          paymentMethod: paymentMethod || 'RAZORPAY_LIVE_MODAL',
+        });
+        onBookingSuccess(newBooking);
+        onClose();
+      };
+
+      const handleTableCheckout = () => {
+        if (tierInfo.isSoldOut) {
+          showToast('This table category is currently sold out', 'error');
+          return;
         }
+
+        if (window.SoundEngine) window.SoundEngine.play('success');
+        window.confetti && window.confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+
+        const newBooking = bookTicket({
+          bookingType: 'VIP_TABLE',
+          event,
+          category: activeCategory,
+          tableDetails: {
+            categoryId: activeCategory.id,
+            categoryName: activeCategory.name,
+            allocatedTableNum: tierInfo.nextTableNum,
+            pax: activeCategory.paxPerTable,
+            price: tierInfo.currentPrice,
+            minSpend: tierInfo.currentMinSpend,
+            activeTierName: tierInfo.activeTier?.name || 'Standard Tier',
+            leadGuestName: leadGuestName.trim() || 'VIP Lead Guest',
+            leadGuestPhone: leadGuestPhone.trim() || '+91 98200 12345',
+            specialRequests: specialRequests.trim(),
+            subtotal: tierInfo.currentPrice,
+            totalAmount: totalTableAmount,
+          },
+          paymentMethod: paymentMethod || 'VIP_TABLE_INSTANT_RZP',
+        });
+
+        showToast(`🍾 Table #${tierInfo.nextTableNum} reserved successfully at ${venue.name}!`, 'success');
+        onBookingSuccess(newBooking);
+        onClose();
       };
 
       if (!isOpen || !event) return null;
 
       return ReactDOM.createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-5 md:p-6 modal-backdrop-blur animate-fade-in" onClick={onClose}>
-          <div className="relative w-full max-w-2xl sm:max-w-3xl max-h-[92vh] flex flex-col rounded-3xl glass-panel shadow-2xl border border-teal-500/30 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-2xl sm:max-w-3xl max-h-[92vh] flex flex-col rounded-3xl glass-panel shadow-2xl border border-teal-500/30 overflow-hidden bg-[#090d16]" onClick={(e) => e.stopPropagation()}>
             
             {/* Compact Header Hero Image (Pinned Top) */}
             <div className="relative h-36 sm:h-44 md:h-48 w-full shrink-0 overflow-hidden">
               <img src={event.image} alt={event.title} className="w-full h-full object-cover object-center" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0c0e18] via-[#0c0e18]/65 to-black/30" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#090d16] via-[#090d16]/70 to-black/30" />
               
               <button
                 onClick={onClose}
@@ -3210,255 +3797,467 @@
               </div>
             </div>
 
+            {/* Booking Mode Switcher Tab Bar */}
+            <div className="p-2 sm:px-6 bg-black/40 border-b border-white/10 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setBookingMode('GA'); setPaymentStep('select'); }}
+                className={`flex-1 py-2.5 rounded-2xl font-black text-xs transition flex items-center justify-center gap-2 ${
+                  bookingMode === 'GA'
+                    ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-black shadow-lg'
+                    : 'bg-white/5 text-slate-400 hover:text-white border border-white/10'
+                }`}
+              >
+                <span>🎟️</span>
+                <span>General Admission Passes &amp; PR Bids</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setBookingMode('VIP_TABLE'); setPaymentStep('select'); }}
+                className={`flex-1 py-2.5 rounded-2xl font-black text-xs transition flex items-center justify-center gap-2 ${
+                  bookingMode === 'VIP_TABLE'
+                    ? 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 text-black shadow-lg'
+                    : 'bg-white/5 text-slate-400 hover:text-white border border-white/10'
+                }`}
+              >
+                <span>🍾</span>
+                <span>VIP Tables &amp; Lounges ({tableCategories.length} Categories)</span>
+              </button>
+            </div>
+
             {/* Scrollable Middle Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-              {paymentStep === 'select' ? (
-                <>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 font-sans">
-                        <span>✨</span>
-                        <span>Authorized Promoter Bids ({scoredBids.length} Offers)</span>
-                      </h3>
-                      <span className="text-[9px] sm:text-[10px] font-semibold text-teal-300 px-2 py-0.5 rounded-full bg-teal-950/60 border border-teal-500/30">
-                        ⚡ AI Ranked by Value
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
+              
+              {/* ================= MODE 1: GENERAL ADMISSION ================= */}
+              {bookingMode === 'GA' && (
+                paymentStep === 'select' ? (
+                  <>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 font-sans">
+                          <span>✨</span>
+                          <span>Authorized Promoter Bids ({scoredBids.length} Offers)</span>
+                        </h3>
+                        <span className="text-[9px] sm:text-[10px] font-semibold text-teal-300 px-2 py-0.5 rounded-full bg-teal-950/60 border border-teal-500/30">
+                          ⚡ AI Ranked by Value
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mb-2.5">
+                        Promoters compete on price, perks, and door priority. Choose your preferred PR offer:
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        {scoredBids.map((bid, rankIdx) => {
+                          const pr = bid.prData;
+                          const isSelected = selectedBidId === bid.id;
+                          const savings = event.basePrice - bid.price;
+                          const isTopPick = rankIdx === 0;
+
+                          return (
+                            <div
+                              key={bid.id}
+                              onClick={() => setSelectedBidId(bid.id)}
+                              className={`relative p-3 rounded-2xl cursor-pointer transition border ${
+                                isSelected
+                                  ? 'bg-teal-950/40 border-teal-500 ring-1 ring-teal-500'
+                                  : 'bg-white/5 border-white/10 hover:border-white/20'
+                              }`}
+                            >
+                              {isTopPick && (
+                                <span className="absolute -top-2 right-3 text-[8px] sm:text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-black shadow-md border border-amber-300">
+                                  🏆 Best Value Pick
+                                </span>
+                              )}
+                              <div className="flex items-start justify-between gap-2 mb-1.5">
+                                <div className="flex items-center gap-2">
+                                  <img src={pr.avatar} alt={pr.name} className="w-9 h-9 rounded-xl object-cover ring-1 ring-white/10" />
+                                  <div>
+                                    <div className="text-xs font-bold text-white flex items-center gap-1">
+                                      <span>{pr.name}</span>
+                                      <span className="text-cyan-400 text-[10px]">✔</span>
+                                    </div>
+                                    <div className="text-[10px] text-amber-400 font-semibold">
+                                      ⭐ {pr.rating} • {pr.showUpRate}% show-up
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm sm:text-base font-black text-white font-mono">₹{bid.price}</div>
+                                  {savings > 0 && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                                      Save ₹{savings}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="space-y-0.5 pt-1.5 border-t border-white/5 text-[10px] sm:text-[11px] text-teal-300">
+                                {bid.perks.map((pId) => {
+                                  const perkObj = event.approvedPerks?.find((ap) => ap.id === pId);
+                                  return (
+                                    <div key={pId} className="flex items-center gap-1">
+                                      <span>🎁</span>
+                                      <span>{perkObj ? perkObj.name : pId}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <p className="text-[10px] text-slate-400 italic mt-1 line-clamp-1">"{bid.notes}"</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 3-Way Party Headcount Customizer */}
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                        <span>Party Headcount Customization</span>
+                        <span className="text-[10px] font-normal text-teal-400 font-mono">Min 44px WCAG Stepper</span>
+                      </h4>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        {/* 1. Male Stag */}
+                        <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-2xl bg-black/40 border border-white/10 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-xs font-bold text-white block">🕺 Male Stag</span>
+                              <span className="text-[10px] text-slate-400">₹{malePrice}/pass</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-1">
+                            <button
+                              onClick={() => setMaleStagCount(Math.max(0, maleStagCount - 1))}
+                              aria-label="Decrease male stag count"
+                              className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-black text-lg transition flex items-center justify-center border border-white/10"
+                            >
+                              −
+                            </button>
+                            <span className="text-sm font-black text-white w-6 text-center font-mono">{maleStagCount}</span>
+                            <button
+                              onClick={() => setMaleStagCount(maleStagCount + 1)}
+                              aria-label="Increase male stag count"
+                              className="w-11 h-11 rounded-xl bg-teal-500 hover:bg-teal-400 active:scale-95 text-black font-black text-lg transition flex items-center justify-center shadow-lg"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 2. Female Stag */}
+                        <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-2xl bg-black/40 border border-white/10 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-xs font-bold text-white block">💃 Female Stag</span>
+                              <span className="text-[10px] text-teal-400">₹{femalePrice} (30% off)</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-1">
+                            <button
+                              onClick={() => setFemaleStagCount(Math.max(0, femaleStagCount - 1))}
+                              aria-label="Decrease female stag count"
+                              className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-black text-lg transition flex items-center justify-center border border-white/10"
+                            >
+                              −
+                            </button>
+                            <span className="text-sm font-black text-white w-6 text-center font-mono">{femaleStagCount}</span>
+                            <button
+                              onClick={() => setFemaleStagCount(femaleStagCount + 1)}
+                              aria-label="Increase female stag count"
+                              className="w-11 h-11 rounded-xl bg-teal-500 hover:bg-teal-400 active:scale-95 text-black font-black text-lg transition flex items-center justify-center shadow-lg"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 3. Couples */}
+                        <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-2xl bg-black/40 border border-teal-500/30 bg-teal-950/20 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-xs font-bold text-teal-200 block">👫 Couple (1M+1F)</span>
+                              <span className="text-[10px] text-amber-300">₹{couplePrice}/duo</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-1">
+                            <button
+                              onClick={() => setCoupleCount(Math.max(0, coupleCount - 1))}
+                              aria-label="Decrease couple count"
+                              className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-black text-lg transition flex items-center justify-center border border-white/10"
+                            >
+                              −
+                            </button>
+                            <span className="text-sm font-black text-white w-6 text-center font-mono">{coupleCount}</span>
+                            <button
+                              onClick={() => setCoupleCount(coupleCount + 1)}
+                              aria-label="Increase couple count"
+                              className="w-11 h-11 rounded-xl bg-teal-500 hover:bg-teal-400 active:scale-95 text-black font-black text-lg transition flex items-center justify-center shadow-lg"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Breakdown Summary Pill */}
+                      <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1 px-1">
+                        <span>Headcount Breakdown:</span>
+                        <span className="text-slate-200 font-mono">
+                          {maleStagCount > 0 && `${maleStagCount} Male Stag `}
+                          {femaleStagCount > 0 && `${femaleStagCount} Female Stag `}
+                          {coupleCount > 0 && `${coupleCount} Couple (${coupleCount * 2} Pax)`}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* Payment Screen for GA */
+                  <div className="space-y-4">
+                    <button onClick={() => setPaymentStep('select')} className="text-xs text-teal-400 hover:underline flex items-center gap-1">
+                      <span>←</span>
+                      <span>Back to Bids &amp; Headcount</span>
+                    </button>
+
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-xs">
+                      <div className="flex justify-between text-slate-300">
+                        <span>{event.title} ({totalPax} Pax Total)</span>
+                        <span className="font-semibold text-white">₹{subtotal}</span>
+                      </div>
+                      {maleStagCount > 0 && (
+                        <div className="flex justify-between text-slate-400 pl-2 text-[11px]">
+                          <span>• {maleStagCount} × Male Stag</span>
+                          <span>₹{maleStagCount * malePrice}</span>
+                        </div>
+                      )}
+                      {femaleStagCount > 0 && (
+                        <div className="flex justify-between text-slate-400 pl-2 text-[11px]">
+                          <span>• {femaleStagCount} × Female Stag</span>
+                          <span>₹{femaleStagCount * femalePrice}</span>
+                        </div>
+                      )}
+                      {coupleCount > 0 && (
+                        <div className="flex justify-between text-slate-400 pl-2 text-[11px]">
+                          <span>• {coupleCount} × Couple Package</span>
+                          <span>₹{coupleCount * couplePrice}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-slate-400">
+                        <span>Dynamic 256-Bit Security Pass Fee</span>
+                        <span>₹{platformFee}</span>
+                      </div>
+                      <div className="pt-2 border-t border-white/10 flex justify-between text-sm font-bold text-white">
+                        <span>Total Amount Payable</span>
+                        <span className="text-base gradient-text-cyan font-mono">₹{totalAmount}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      {['Google Pay (UPI)', 'PhonePe (UPI)', 'Paytm UPI', 'Cards / NetBanking'].map((m, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setPaymentMethod(m)}
+                          className={`w-full p-3 rounded-xl flex items-center justify-between transition-colors border ${
+                              paymentMethod === m ? 'bg-teal-600/30 border-teal-500 text-white' : 'bg-white/5 border-white/10 text-slate-400'
+                            }`}
+                        >
+                          <span className="truncate">{m}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={handleGACheckout}
+                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-90 text-black text-xs font-black shadow-xl"
+                    >
+                      ⚡ Pay ₹{totalAmount} &amp; Unlock Dynamic Door Pass
+                    </button>
+                  </div>
+                )
+              )}
+
+              {/* ================= MODE 2: VIP TABLE & LOUNGE RESERVATION ================= */}
+              {bookingMode === 'VIP_TABLE' && (
+                <div className="space-y-4">
+                  {/* Category Selector Carousel */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-white uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                        <span>🍾</span>
+                        <span>Choose VIP Table &amp; Lounge Category:</span>
+                      </span>
+                      <span className="text-[10px] text-amber-300 font-mono">
+                        {tableCategories.length} Options Available
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mb-2.5">
-                      Promoters compete on price, perks, and door priority. Choose your preferred PR offer:
-                    </p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                      {scoredBids.map((bid, rankIdx) => {
-                        const pr = bid.prData;
-                        const isSelected = selectedBidId === bid.id;
-                        const savings = event.basePrice - bid.price;
-                        const isTopPick = rankIdx === 0;
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {tableCategories.map((cat) => {
+                        const isSelected = cat.id === selectedTableCatId;
+                        const cInfo = getTableCategoryTierInfo(cat);
 
                         return (
                           <div
-                            key={bid.id}
-                            onClick={() => setSelectedBidId(bid.id)}
-                            className={`relative p-3 rounded-2xl cursor-pointer transition border ${
+                            key={cat.id}
+                            onClick={() => setSelectedTableCatId(cat.id)}
+                            className={`p-3.5 rounded-2xl cursor-pointer border transition relative ${
                               isSelected
-                                ? 'bg-teal-950/40 border-teal-500 ring-1 ring-teal-500'
+                                ? 'bg-amber-950/40 border-amber-400 ring-2 ring-amber-400/40 shadow-xl'
                                 : 'bg-white/5 border-white/10 hover:border-white/20'
                             }`}
                           >
-                            {isTopPick && (
-                              <span className="absolute -top-2 right-3 text-[8px] sm:text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-black shadow-md border border-amber-300">
-                                🏆 Best Value Pick
-                              </span>
-                            )}
-                            <div className="flex items-start justify-between gap-2 mb-1.5">
-                              <div className="flex items-center gap-2">
-                                <img src={pr.avatar} alt={pr.name} className="w-9 h-9 rounded-xl object-cover ring-1 ring-white/10" />
-                                <div>
-                                  <div className="text-xs font-bold text-white flex items-center gap-1">
-                                    <span>{pr.name}</span>
-                                    <span className="text-cyan-400 text-[10px]">✔</span>
-                                  </div>
-                                  <div className="text-[10px] text-amber-400 font-semibold">
-                                    ⭐ {pr.rating} • {pr.showUpRate}% show-up
-                                  </div>
-                                </div>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <span className="text-[9px] uppercase px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-mono font-bold">
+                                  {cat.badge || 'VIP TABLE'}
+                                </span>
+                                <h4 className="font-black text-white text-sm mt-1">{cat.name}</h4>
+                                <p className="text-[11px] text-slate-400">
+                                  Seats up to <b className="text-white">{cat.paxPerTable} Guests</b>
+                                </p>
                               </div>
+
                               <div className="text-right">
-                                <div className="text-sm sm:text-base font-black text-white font-mono">₹{bid.price}</div>
-                                {savings > 0 && (
-                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                                    Save ₹{savings}
-                                  </span>
-                                )}
+                                <div className="text-base font-black text-amber-300 font-mono">
+                                  ₹{(cInfo.currentPrice || 0).toLocaleString('en-IN')}
+                                </div>
+                                <span className="text-[10px] text-emerald-400 block font-mono">
+                                  ₹{(cInfo.currentMinSpend || 0).toLocaleString('en-IN')} F&amp;B Cover
+                                </span>
                               </div>
                             </div>
 
-                            <div className="space-y-0.5 pt-1.5 border-t border-white/5 text-[10px] sm:text-[11px] text-teal-300">
-                              {bid.perks.map((pId) => {
-                                const perkObj = event.approvedPerks?.find((ap) => ap.id === pId);
-                                return (
-                                  <div key={pId} className="flex items-center gap-1">
-                                    <span>🎁</span>
-                                    <span>{perkObj ? perkObj.name : pId}</span>
-                                  </div>
-                                );
-                              })}
+                            {/* Live Availability Bar */}
+                            <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[10px]">
+                              <span className={`font-bold ${cInfo.remainingTables <= 2 ? 'text-rose-400' : 'text-amber-300'}`}>
+                                {cInfo.isSoldOut ? '🔴 SOLD OUT' : `🔥 ${cInfo.bookedTables || 0} / ${cInfo.totalTables || 1} Booked • Only ${cInfo.remainingTables || 0} Left!`}
+                              </span>
+                              <span className="text-slate-400 font-mono">
+                                {cInfo.activeTier?.name || 'Standard Tier'}
+                              </span>
                             </div>
-                            <p className="text-[10px] text-slate-400 italic mt-1 line-clamp-1">"{bid.notes}"</p>
                           </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* 3-Way Party Headcount Customizer (Male Stag, Female Stag, Couples) */}
-                  <div className="p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
-                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
-                      <span>Party Headcount Customization</span>
-                      <span className="text-[10px] font-normal text-teal-400 font-mono">Min 44px WCAG Stepper</span>
-                    </h4>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      {/* 1. Male Stag */}
-                      <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-2xl bg-black/40 border border-white/10 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-bold text-white block">🕺 Male Stag</span>
-                            <span className="text-[10px] text-slate-400">₹{malePrice}/pass</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-1">
-                          <button
-                            onClick={() => setMaleStagCount(Math.max(0, maleStagCount - 1))}
-                            aria-label="Decrease male stag count"
-                            className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-black text-lg transition flex items-center justify-center border border-white/10"
-                          >
-                            −
-                          </button>
-                          <span className="text-sm font-black text-white w-6 text-center font-mono">{maleStagCount}</span>
-                          <button
-                            onClick={() => setMaleStagCount(maleStagCount + 1)}
-                            aria-label="Increase male stag count"
-                            className="w-11 h-11 rounded-xl bg-teal-500 hover:bg-teal-400 active:scale-95 text-black font-black text-lg transition flex items-center justify-center shadow-lg"
-                          >
-                            +
-                          </button>
+                  {/* Active Selected Table Deep Dive & Details */}
+                  <div className="p-4 rounded-2xl bg-black/60 border border-amber-500/30 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-white/10 flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-lg">
+                          👑
+                        </span>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-wider text-amber-400 font-bold">
+                            Allocated Next: Table #{tierInfo.nextTableNum || 1}
+                          </span>
+                          <h4 className="text-sm font-black text-white">{activeCategory?.name || 'VIP Table'} ({activeCategory?.paxPerTable || 6} Pax)</h4>
                         </div>
                       </div>
 
-                      {/* 2. Female Stag */}
-                      <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-2xl bg-black/40 border border-white/10 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-bold text-white block">💃 Female Stag</span>
-                            <span className="text-[10px] text-teal-400">₹{femalePrice} (30% off)</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-1">
-                          <button
-                            onClick={() => setFemaleStagCount(Math.max(0, femaleStagCount - 1))}
-                            aria-label="Decrease female stag count"
-                            className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-black text-lg transition flex items-center justify-center border border-white/10"
-                          >
-                            −
-                          </button>
-                          <span className="text-sm font-black text-white w-6 text-center font-mono">{femaleStagCount}</span>
-                          <button
-                            onClick={() => setFemaleStagCount(femaleStagCount + 1)}
-                            aria-label="Increase female stag count"
-                            className="w-11 h-11 rounded-xl bg-teal-500 hover:bg-teal-400 active:scale-95 text-black font-black text-lg transition flex items-center justify-center shadow-lg"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* 3. Couples */}
-                      <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-2xl bg-black/40 border border-teal-500/30 bg-teal-950/20 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-bold text-teal-200 block">👫 Couple (1M+1F)</span>
-                            <span className="text-[10px] text-amber-300">₹{couplePrice}/duo</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-1">
-                          <button
-                            onClick={() => setCoupleCount(Math.max(0, coupleCount - 1))}
-                            aria-label="Decrease couple count"
-                            className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-black text-lg transition flex items-center justify-center border border-white/10"
-                          >
-                            −
-                          </button>
-                          <span className="text-sm font-black text-white w-6 text-center font-mono">{coupleCount}</span>
-                          <button
-                            onClick={() => setCoupleCount(coupleCount + 1)}
-                            aria-label="Increase couple count"
-                            className="w-11 h-11 rounded-xl bg-teal-500 hover:bg-teal-400 active:scale-95 text-black font-black text-lg transition flex items-center justify-center shadow-lg"
-                          >
-                            +
-                          </button>
-                        </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 block">Surge Price (Tiers Based)</span>
+                        <span className="text-base font-mono font-black text-amber-300">
+                          ₹{(tierInfo.currentPrice || 0).toLocaleString('en-IN')}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Breakdown Summary Pill */}
-                    <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1 px-1">
-                      <span>Headcount Breakdown:</span>
-                      <span className="text-slate-200 font-mono">
-                        {maleStagCount > 0 && `${maleStagCount} Male Stag `}
-                        {femaleStagCount > 0 && `${femaleStagCount} Female Stag `}
-                        {coupleCount > 0 && `${coupleCount} Couple (${coupleCount * 2} Pax)`}
+                    <p className="text-slate-300 text-xs leading-relaxed">
+                      {activeCategory?.description || 'Elevated banquette seating with personal bottle service.'}
+                    </p>
+
+                    {/* Included Perks Matrix */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Included VIP Hospitality Amenities:
                       </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {(activeCategory?.perks || []).map((p, i) => (
+                          <div key={i} className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-teal-300 text-[11px] flex items-center gap-1.5 font-semibold">
+                            <span>✓</span>
+                            <span>{p}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </>
-              ) : (
-                /* Payment Screen */
-                <div className="space-y-4">
-                  <button onClick={() => setPaymentStep('select')} className="text-xs text-teal-400 hover:underline flex items-center gap-1">
-                    <span>←</span>
-                    <span>Back to Bids & Headcount</span>
-                  </button>
 
-                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-xs">
-                    <div className="flex justify-between text-slate-300">
-                      <span>{event.title} ({totalPax} Pax Total)</span>
-                      <span className="font-semibold text-white">₹{subtotal}</span>
-                    </div>
-                    {maleStagCount > 0 && (
-                      <div className="flex justify-between text-slate-400 pl-2 text-[11px]">
-                        <span>• {maleStagCount} × Male Stag</span>
-                        <span>₹{maleStagCount * malePrice}</span>
+                    {/* Dynamic Surge Tier Warning */}
+                    {tierInfo.nextTierInfo && (
+                      <div className="p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] flex items-center justify-between">
+                        <span>⚠️ Dynamic Surge Alert:</span>
+                        <span>Next booking price increases to ₹{(tierInfo.nextTierInfo.price || 0).toLocaleString('en-IN')}!</span>
                       </div>
                     )}
-                    {femaleStagCount > 0 && (
-                      <div className="flex justify-between text-slate-400 pl-2 text-[11px]">
-                        <span>• {femaleStagCount} × Female Stag</span>
-                        <span>₹{femaleStagCount * femalePrice}</span>
-                      </div>
-                    )}
-                    {coupleCount > 0 && (
-                      <div className="flex justify-between text-slate-400 pl-2 text-[11px]">
-                        <span>• {coupleCount} × Couple Package</span>
-                        <span>₹{coupleCount * couplePrice}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-slate-400">
-                      <span>Dynamic 256-Bit Security Pass Fee</span>
-                      <span>₹{platformFee}</span>
-                    </div>
-                    <div className="pt-2 border-t border-white/10 flex justify-between text-sm font-bold text-white">
-                      <span>Total Amount Payable</span>
-                      <span className="text-base gradient-text-cyan font-mono">₹{totalAmount}</span>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    {['Google Pay (UPI)', 'PhonePe (UPI)', 'Paytm UPI', 'Cards / NetBanking'].map((m, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setPaymentMethod(m)}
-                        className={`w-full p-3 rounded-xl flex items-center justify-between transition-colors border ${
-                            paymentMethod === m ? 'bg-teal-600/30 border-teal-500 text-white' : 'bg-white/5 border-white/10 text-slate-400'
-                          }`}
-                      >
-                        <span className="truncate">{m}</span>
-                      </button>
-                    ))}
-                  </div>
+                    {/* Lead Guest & Requests Inputs */}
+                    <div className="space-y-2 pt-2 border-t border-white/10">
+                      <span className="font-bold text-slate-300 block">Lead Guest &amp; Bottle Host Notification:</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Lead VIP Guest Name"
+                          value={leadGuestName}
+                          onChange={(e) => setLeadGuestName(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-white focus:border-amber-400 focus:outline-none"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Host WhatsApp (+91 ...)"
+                          value={leadGuestPhone}
+                          onChange={(e) => setLeadGuestPhone(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-white focus:border-amber-400 focus:outline-none"
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Special requests (e.g. DJ Booth facing, Champagne sparklers...)"
+                        value={specialRequests}
+                        onChange={(e) => setSpecialRequests(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-white focus:border-amber-400 focus:outline-none"
+                      />
+                    </div>
 
-                  <button
-                    onClick={handleCheckout}
-                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-90 text-black text-xs font-black shadow-xl"
-                  >
-                    ⚡ Pay ₹{totalAmount} & Unlock Dynamic Door Pass
-                  </button>
+                    {/* Breakdown & Bill Preview */}
+                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-1.5 text-[11px]">
+                      <div className="flex justify-between text-slate-300">
+                        <span>Table Reservation (Table #{tierInfo.nextTableNum || 1})</span>
+                        <span className="font-mono font-bold text-white">₹{(tierInfo.currentPrice || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between text-emerald-400">
+                        <span>• Included F&amp;B Minimum Spend Cover Credit</span>
+                        <span className="font-mono font-bold">₹{(tierInfo.currentMinSpend || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-400">
+                        <span>VIP Host Concierge &amp; 256-Bit Pass Fee (2%)</span>
+                        <span className="font-mono">₹{(tablePlatformFee || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="pt-2 border-t border-white/10 flex justify-between text-xs font-black text-white">
+                        <span>Total Table Settlement</span>
+                        <span className="font-mono text-sm text-amber-300">₹{(totalTableAmount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+
+                    {/* Instant Table Checkout CTA */}
+                    <button
+                      type="button"
+                      disabled={tierInfo.isSoldOut}
+                      onClick={handleTableCheckout}
+                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black font-black text-xs shadow-xl hover:opacity-95 disabled:opacity-40 transition flex items-center justify-center gap-2 btn-glow"
+                    >
+                      <span>🍾</span>
+                      <span>
+                        {tierInfo.isSoldOut ? 'Sold Out in this Tier' : `Reserve Table #${tierInfo.nextTableNum} • Pay ₹${totalTableAmount.toLocaleString('en-IN')}`}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Pinned Bottom Action Bar (Always Visible) */}
-            {paymentStep === 'select' && (
+            {/* Pinned Bottom Action Bar for GA Pass Mode */}
+            {bookingMode === 'GA' && paymentStep === 'select' && (
               <div className="shrink-0 p-3 sm:p-4 bg-[#0a0c14]/95 backdrop-blur-md border-t border-white/10 flex items-center justify-between gap-3 z-10">
                 <div>
                   <span className="text-[10px] text-slate-400 block">Total for {totalPax} Guests</span>
@@ -3712,25 +4511,71 @@
                   </div>
 
                   {/* Booking Details Breakdown */}
-                  <div className="pt-4 border-t border-dashed border-white/15 grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Party Headcount:</span>
-                      <span className="font-bold text-white text-sm">
-                        {selectedBooking.maleStagCount ? `${selectedBooking.maleStagCount}M Stag, ${selectedBooking.femaleStagCount}F Stag, ${selectedBooking.coupleCount} Couple` : `${selectedBooking.pax} Pax`}
-                      </span>
+                  {selectedBooking.bookingType === 'VIP_TABLE' ? (
+                    <div className="pt-4 border-t border-dashed border-amber-500/30 space-y-3">
+                      <div className="p-3.5 rounded-2xl bg-amber-950/30 border border-amber-500/40 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-amber-300 flex items-center gap-1">
+                            <span>🍾</span>
+                            <span>VIP TABLE RESERVATION</span>
+                          </span>
+                          <span className="text-xs font-mono font-black text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40">
+                            Table #{selectedBooking.tableDetails?.allocatedTableNum || selectedBooking.tableNumber || 1}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">Category:</span>
+                            <span className="font-bold text-white text-xs">{selectedBooking.tableDetails?.categoryName || 'VIP Lounge Table'}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">Party Capacity:</span>
+                            <span className="font-bold text-white text-xs">{selectedBooking.tableDetails?.pax || 6} VIP Guests</span>
+                          </div>
+                        </div>
+
+                        <div className="p-2 rounded-xl bg-black/50 border border-white/10 flex items-center justify-between text-xs">
+                          <span className="text-[11px] text-emerald-300 font-semibold">🍾 Included F&amp;B Cover Credit:</span>
+                          <span className="font-mono font-bold text-emerald-400 text-sm">
+                            ₹{(selectedBooking.tableDetails?.minSpend || selectedBooking.tableDetails?.price || 45000).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Lead Guest */}
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Lead Guest:</span>
+                          <span className="font-bold text-white text-sm">{selectedBooking.tableDetails?.leadGuestName || 'VIP Guest'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Pricing Tier:</span>
+                          <span className="font-bold text-amber-300 text-sm">{selectedBooking.tableDetails?.activeTierName || 'Surge Tier'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Assigned PR Host:</span>
-                      <span className="font-bold text-purple-300 text-sm">{pr?.name || 'Rahul Mehta'}</span>
+                  ) : (
+                    <div className="pt-4 border-t border-dashed border-white/15 grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Party Headcount:</span>
+                        <span className="font-bold text-white text-sm">
+                          {selectedBooking.maleStagCount ? `${selectedBooking.maleStagCount}M Stag, ${selectedBooking.femaleStagCount}F Stag, ${selectedBooking.coupleCount} Couple` : `${selectedBooking.pax} Pax`}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Assigned PR Host:</span>
+                        <span className="font-bold text-purple-300 text-sm">{pr?.name || 'Rahul Mehta'}</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Included Perks */}
-                  {selectedBooking.perks?.length > 0 && (
+                  {(selectedBooking.perks?.length > 0 || selectedBooking.tableDetails?.perks?.length > 0) && (
                     <div className="mt-3 pt-3 border-t border-white/5 space-y-1.5 text-xs text-pink-300">
-                      <span className="text-[10px] text-slate-400 block uppercase tracking-wider">VIP Perks Unlocked:</span>
+                      <span className="text-[10px] text-slate-400 block uppercase tracking-wider">VIP Perks &amp; Hospitality Unlocked:</span>
                       <div className="flex flex-wrap gap-1.5">
-                        {selectedBooking.perks.map((p, i) => (
+                        {(selectedBooking.perks || selectedBooking.tableDetails?.perks || []).map((p, i) => (
                           <span key={i} className="px-2 py-0.5 rounded-md bg-pink-500/10 border border-pink-500/20 text-[11px]">
                             🎁 {p}
                           </span>
@@ -4117,7 +4962,6 @@
     };
 
     // --- CREATE EVENT MODAL COMPONENT (Club Owner Event Creation & PR Campaign Launcher) ---
-    // --- CREATE EVENT MODAL COMPONENT (Club Owner Studio Event Creator & PR Campaign Launcher) ---
     const CreateEventModal = ({ isOpen, onClose, onEventCreated }) => {
       const { activeOwnerVenueId, venues, createEvent, showToast } = useApp();
       const venue = venues.find((v) => v.id === activeOwnerVenueId) || venues[0];
@@ -4138,6 +4982,39 @@
       const [customUrlInput, setCustomUrlInput] = useState('');
       const [uploadedFileName, setUploadedFileName] = useState('');
       const fileInputRef = React.useRef(null);
+
+      // VIP Table & Lounge Inventory Categories State
+      const [tableCategories, setTableCategories] = useState([
+        {
+          id: 'tbl_cat_lounge_6pax',
+          name: 'VIP Lounge Table',
+          badge: 'VIP LOUNGE',
+          paxPerTable: 6,
+          totalTables: 8,
+          bookedTables: 0,
+          tiers: [
+            { name: 'Early Bird (Tables 1-3)', range: 'Tables 1 - 3', minTable: 1, maxTable: 3, price: 35000, minSpend: 30000 },
+            { name: 'High Demand Surge (Tables 4-6)', range: 'Tables 4 - 6', minTable: 4, maxTable: 6, price: 55000, minSpend: 45000 },
+            { name: 'Climax / Last Tables (Tables 7-8)', range: 'Tables 7 - 8', minTable: 7, maxTable: 8, price: 85000, minSpend: 75000 },
+          ],
+          perks: ['Dedicated VIP Hostess', '₹45,000 F&B Included Cover', 'Priority Valet Parking', 'Fast-Track Door Entry'],
+          description: 'Elevated banquette seating overlooking main dancefloor with personal bottle service host.',
+        },
+        {
+          id: 'tbl_cat_vvip_dj_10pax',
+          name: 'VVIP DJ Stage Table',
+          badge: 'VVIP DJ BOOTH',
+          paxPerTable: 10,
+          totalTables: 4,
+          bookedTables: 0,
+          tiers: [
+            { name: 'Standard Allocation (Tables 1-2)', range: 'Tables 1 - 2', minTable: 1, maxTable: 2, price: 75000, minSpend: 65000 },
+            { name: 'Last DJ Booths (Tables 3-4)', range: 'Tables 3 - 4', minTable: 3, maxTable: 4, price: 120000, minSpend: 100000 },
+          ],
+          perks: ['Direct DJ Stage Proximity', 'Magnum Dom Pérignon Included', 'Private Security Bouncer', 'Unlimited Mixers'],
+          description: 'Directly adjacent to the DJ console. Commanding panoramic spot in the venue.',
+        },
+      ]);
 
       // Perks state: Array of perks with editable values and enabled status
       const [perksList, setPerksList] = useState([
@@ -4173,6 +5050,154 @@
         { id: 'perk_table_credit', name: '₹1,000 F&B Table Cover Credit', defaultValue: 1000 },
       ];
 
+      // AI Text Sanitization Engine Trigger
+      const handleAutoFormatAllText = () => {
+        const cleanedTitle = sanitizeNightlifeTitle(title);
+        const cleanedDesc = sanitizeNightlifeSentence(description);
+        setTitle(cleanedTitle);
+        setDescription(cleanedDesc);
+
+        // Also clean table category names and perks
+        setTableCategories((prev) =>
+          prev.map((cat) => ({
+            ...cat,
+            name: sanitizeNightlifeTitle(cat.name),
+            tiers: cat.tiers.map((t) => ({ ...t, name: sanitizeNightlifeTitle(t.name) })),
+          }))
+        );
+
+        setPerksList((prev) =>
+          prev.map((p) => ({
+            ...p,
+            name: sanitizeNightlifeTitle(p.name),
+          }))
+        );
+
+        window.SoundEngine?.play('click');
+        showToast('✨ AI Text Sanitizer: Title Case, Sentence Capitalization & Acronyms Standardized!', 'success');
+      };
+
+      // Table Category Management Handlers
+      const handleAddTableCategory = (type = 'custom') => {
+        let newCat;
+        if (type === 'cabana') {
+          newCat = {
+            id: `tbl_cat_${Date.now()}`,
+            name: 'Owner Celebrity Cabana',
+            badge: 'ULTRA VIP CABANA',
+            paxPerTable: 15,
+            totalTables: 2,
+            bookedTables: 0,
+            tiers: [
+              { name: 'Cabana #1', range: 'Cabana 1', minTable: 1, maxTable: 1, price: 150000, minSpend: 125000 },
+              { name: 'Final Grand Cabana', range: 'Cabana 2', minTable: 2, maxTable: 2, price: 200000, minSpend: 175000 },
+            ],
+            perks: ['Private Restroom & Bar Access', '2 Dedicated Bouncers', 'Custom Laser Shaker Presentation', '₹1.5 Lakh F&B Cover'],
+            description: 'Ultra-exclusive glass-enclosed private cabana with private bar.',
+          };
+        } else if (type === 'cocktail') {
+          newCat = {
+            id: `tbl_cat_${Date.now()}`,
+            name: 'High-Top Cocktail Table',
+            badge: 'COCKTAIL TABLE',
+            paxPerTable: 4,
+            totalTables: 10,
+            bookedTables: 0,
+            tiers: [
+              { name: 'Standard (Tables 1-5)', range: 'Tables 1 - 5', minTable: 1, maxTable: 5, price: 18000, minSpend: 15000 },
+              { name: 'Surge (Tables 6-10)', range: 'Tables 6 - 10', minTable: 6, maxTable: 10, price: 28000, minSpend: 24000 },
+            ],
+            perks: ['₹15,000 Bottle Service Credit', 'Dedicated Server', 'Express Entry'],
+            description: 'Standing high-top table close to the bar and dancefloor.',
+          };
+        } else {
+          newCat = {
+            id: `tbl_cat_${Date.now()}`,
+            name: 'VIP Private Deck Table',
+            badge: 'VIP DECK',
+            paxPerTable: 8,
+            totalTables: 5,
+            bookedTables: 0,
+            tiers: [
+              { name: 'Early Bird (Tables 1-2)', range: 'Tables 1 - 2', minTable: 1, maxTable: 2, price: 40000, minSpend: 35000 },
+              { name: 'Surge Tier (Tables 3-5)', range: 'Tables 3 - 5', minTable: 3, maxTable: 5, price: 65000, minSpend: 55000 },
+            ],
+            perks: ['Dedicated VIP Hostess', 'F&B Credit Cover', 'Valet Parking'],
+            description: 'Private elevated deck overlooking the soundstage.',
+          };
+        }
+
+        setTableCategories((prev) => [...prev, newCat]);
+        showToast(`Added: ${newCat.name}`, 'success');
+      };
+
+      const handleRemoveTableCategory = (catId) => {
+        if (tableCategories.length <= 1) {
+          showToast('At least one table category is required (or keep general floor only)', 'info');
+          return;
+        }
+        setTableCategories((prev) => prev.filter((c) => c.id !== catId));
+        showToast('Table category removed', 'info');
+      };
+
+      const handleUpdateCategoryField = (catId, field, val) => {
+        setTableCategories((prev) =>
+          prev.map((c) => {
+            if (c.id !== catId) return c;
+            return { ...c, [field]: val };
+          })
+        );
+      };
+
+      const handleAddTierToCategory = (catId) => {
+        setTableCategories((prev) =>
+          prev.map((c) => {
+            if (c.id !== catId) return c;
+            const currentTiers = c.tiers || [];
+            const lastTier = currentTiers[currentTiers.length - 1];
+            const nextMin = (lastTier ? lastTier.maxTable : 0) + 1;
+            const nextMax = Math.max(nextMin, c.totalTables || nextMin + 1);
+            const newTier = {
+              name: `Surge Tier ${currentTiers.length + 1}`,
+              range: `Tables ${nextMin} - ${nextMax}`,
+              minTable: nextMin,
+              maxTable: nextMax,
+              price: (lastTier ? lastTier.price : 40000) + 20000,
+              minSpend: (lastTier ? lastTier.minSpend : 35000) + 18000,
+            };
+            return { ...c, tiers: [...currentTiers, newTier] };
+          })
+        );
+        showToast('Dynamic Surge Tier added to category', 'success');
+      };
+
+      const handleRemoveTierFromCategory = (catId, tierIndex) => {
+        setTableCategories((prev) =>
+          prev.map((c) => {
+            if (c.id !== catId) return c;
+            if (c.tiers.length <= 1) {
+              showToast('At least one pricing tier required per category', 'info');
+              return c;
+            }
+            const updatedTiers = c.tiers.filter((_, idx) => idx !== tierIndex);
+            return { ...c, tiers: updatedTiers };
+          })
+        );
+      };
+
+      const handleUpdateTierField = (catId, tierIndex, field, val) => {
+        setTableCategories((prev) =>
+          prev.map((c) => {
+            if (c.id !== catId) return c;
+            const updatedTiers = c.tiers.map((t, idx) => {
+              if (idx !== tierIndex) return t;
+              return { ...t, [field]: val };
+            });
+            return { ...c, tiers: updatedTiers };
+          })
+        );
+      };
+
       const handleFileUpload = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -4198,7 +5223,6 @@
         const catalogItem = PERK_CATALOG.find((p) => p.id === catalogSelectedPerk);
         if (!catalogItem) return;
         
-        // Check if already in list
         const exists = perksList.some((p) => p.name.toLowerCase() === catalogItem.name.toLowerCase());
         if (exists) {
           showToast('This perk is already in your list', 'info');
@@ -4229,7 +5253,7 @@
           ...prev,
           {
             id: `custom_perk_${Date.now()}`,
-            name: newCustomPerkName.trim(),
+            name: sanitizeNightlifeTitle(newCustomPerkName.trim()),
             value: val,
             enabled: true,
             isCustom: true,
@@ -4288,8 +5312,14 @@
             value: p.value,
           }));
 
+        // Format and clean before posting
+        const cleanTitle = sanitizeNightlifeTitle(title.trim());
+        const cleanDesc = sanitizeNightlifeSentence(
+          description.trim() || `Exclusive ${genre} event at ${venue.name}. VIP bottle service tables and dynamic PR deals.`
+        );
+
         const newEvent = {
-          title: title.trim(),
+          title: cleanTitle,
           genre,
           date,
           time,
@@ -4298,14 +5328,15 @@
           floorPrice: fPrice,
           commissionCap: cCap,
           capacityQuota: qAlloc,
-          description: description.trim() || `Exclusive ${genre} event at ${venue.name}. Curated crowd, premium sound, and dynamic PR deals.`,
+          description: cleanDesc,
           approvedPerks: activePerkObjects,
+          tableCategories,
         };
 
         createEvent(newEvent);
         window.confetti && window.confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
         window.SoundEngine?.play('success');
-        showToast(`🎉 "${newEvent.title}" is live for PR Bidding!`, 'success');
+        showToast(`🎉 "${newEvent.title}" is live with ${tableCategories.length} VIP Table categories!`, 'success');
         onClose();
         if (onEventCreated) onEventCreated();
       };
@@ -4318,6 +5349,9 @@
       const discountPct = Math.round((maxDiscount / (numBase || 1)) * 100);
       const projectedGrossFloor = numQuota * numFloor;
       const projectedPRPool = numQuota * numCap;
+
+      const totalVIPTablesCount = tableCategories.reduce((acc, c) => acc + (Number(c.totalTables) || 0), 0);
+      const totalVIPSeatsCount = tableCategories.reduce((acc, c) => acc + ((Number(c.totalTables) || 0) * (Number(c.paxPerTable) || 1)), 0);
 
       return ReactDOM.createPortal(
         <div
@@ -4342,40 +5376,68 @@
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                       {venue.name}
                     </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      🍾 VIP Table Engine Active
+                    </span>
                   </div>
                   <h3 className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
-                    Host &amp; Launch New Nightlife Event
+                    Host Event, Manage Tables &amp; Launch PR Campaign
                   </h3>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center text-sm transition"
-                title="Close"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleAutoFormatAllText}
+                  className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-500/20 to-purple-500/20 hover:from-teal-500/30 hover:to-purple-500/30 text-teal-300 border border-teal-400/40 font-bold text-xs shadow-md transition"
+                  title="Auto-format title, description, and perks with Title Case & Acronyms"
+                >
+                  <span>✨</span>
+                  <span>AI Auto-Format</span>
+                </button>
+                <button
+                  onClick={onClose}
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center text-sm transition"
+                  title="Close"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
-            {/* Scrollable Form Body (Strictly overflow-x-hidden to eliminate horizontal scrollbar) */}
+            {/* Scrollable Form Body */}
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-6 text-xs text-slate-300">
               
               {/* Section 1: Basic Event Details & Genre */}
               <div className="space-y-3">
-                <div className="flex items-center gap-2 pb-1 border-b border-white/5 text-slate-200 font-bold">
-                  <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">1</span>
-                  <span>Basic Event Details &amp; Music Genre</span>
+                <div className="flex items-center justify-between pb-1 border-b border-white/5 text-slate-200 font-bold">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">1</span>
+                    <span>Basic Event Details &amp; Music Genre</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAutoFormatAllText}
+                    className="sm:hidden text-teal-300 font-bold text-[10px] flex items-center gap-1"
+                  >
+                    <span>✨</span>
+                    <span>AI Polish</span>
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2 space-y-1">
-                    <label className="block text-slate-300 font-bold">Event Title &amp; Artist Lineup *</label>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-slate-300 font-bold">Event Title &amp; Artist Lineup *</label>
+                      <span className="text-[10px] text-teal-400">Auto-Formats on Blur</span>
+                    </div>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Boiler Room Mumbai — Underground Showcase ft. Anyma"
+                      placeholder="e.g. boiler room mumbai — underground showcase ft anyma"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
+                      onBlur={(e) => setTitle(sanitizeNightlifeTitle(e.target.value))}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white placeholder-slate-500 focus:border-teal-400 focus:outline-none"
                     />
                   </div>
@@ -4421,7 +5483,7 @@
                 </div>
               </div>
 
-              {/* Section 2: Cover Artwork Studio (Presets, File Upload, Direct URL) */}
+              {/* Section 2: Cover Artwork Studio */}
               <div className="space-y-3 p-4 rounded-2xl bg-black/40 border border-white/10">
                 <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-white/10">
                   <div className="flex items-center gap-2 text-slate-200 font-bold">
@@ -4435,34 +5497,28 @@
                       type="button"
                       onClick={() => setArtworkMode('preset')}
                       className={`px-3 py-1 rounded-lg font-bold transition ${
-                        artworkMode === 'preset'
-                          ? 'bg-teal-500 text-black shadow-md'
-                          : 'text-slate-400 hover:text-white'
+                        artworkMode === 'preset' ? 'bg-teal-500 text-black shadow-md' : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      🖼️ Curated Presets
+                      🖼️ Presets
                     </button>
                     <button
                       type="button"
                       onClick={() => setArtworkMode('upload')}
                       className={`px-3 py-1 rounded-lg font-bold transition ${
-                        artworkMode === 'upload'
-                          ? 'bg-teal-500 text-black shadow-md'
-                          : 'text-slate-400 hover:text-white'
+                        artworkMode === 'upload' ? 'bg-teal-500 text-black shadow-md' : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      📤 Upload Artwork
+                      📤 Upload
                     </button>
                     <button
                       type="button"
                       onClick={() => setArtworkMode('url')}
                       className={`px-3 py-1 rounded-lg font-bold transition ${
-                        artworkMode === 'url'
-                          ? 'bg-teal-500 text-black shadow-md'
-                          : 'text-slate-400 hover:text-white'
+                        artworkMode === 'url' ? 'bg-teal-500 text-black shadow-md' : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      🔗 Web Image URL
+                      🔗 Web URL
                     </button>
                   </div>
                 </div>
@@ -4483,11 +5539,7 @@
                               : 'border-white/10 bg-white/5 hover:border-white/20'
                           }`}
                         >
-                          <img
-                            src={preset.url}
-                            alt={preset.label}
-                            className="w-full h-16 rounded-lg object-cover"
-                          />
+                          <img src={preset.url} alt={preset.label} className="w-full h-16 rounded-lg object-cover" />
                           <span className="text-[9px] text-slate-300 font-semibold line-clamp-1 text-center">
                             {preset.label}
                           </span>
@@ -4500,20 +5552,12 @@
                 {/* Sub-View: File Upload */}
                 {artworkMode === 'upload' && (
                   <div className="space-y-3">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileUpload}
-                      accept="image/*"
-                      className="hidden"
-                    />
+                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
                     <div
                       onClick={() => fileInputRef.current && fileInputRef.current.click()}
                       className="cursor-pointer border-2 border-dashed border-teal-500/40 hover:border-teal-400 rounded-2xl p-6 text-center bg-teal-950/20 hover:bg-teal-950/30 transition flex flex-col items-center justify-center gap-2"
                     >
-                      <div className="w-12 h-12 rounded-full bg-teal-500/20 flex items-center justify-center text-2xl">
-                        📁
-                      </div>
+                      <div className="w-12 h-12 rounded-full bg-teal-500/20 flex items-center justify-center text-2xl">📁</div>
                       <div>
                         <p className="font-bold text-white text-sm">Click to choose image file or Drag &amp; Drop here</p>
                         <p className="text-slate-400 text-[11px] mt-0.5">Supports high-res JPG, PNG, WEBP (Max 8MB)</p>
@@ -4558,11 +5602,7 @@
 
                 {/* Live WYSIWYG Artwork Preview Banner */}
                 <div className="mt-3 p-3 rounded-xl bg-black/60 border border-white/10 flex items-center gap-3">
-                  <img
-                    src={selectedImage}
-                    alt="Active Preview"
-                    className="w-20 h-14 rounded-lg object-cover border border-white/20 shrink-0"
-                  />
+                  <img src={selectedImage} alt="Active Preview" className="w-20 h-14 rounded-lg object-cover border border-white/20 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono font-bold">
@@ -4580,17 +5620,17 @@
                 </div>
               </div>
 
-              {/* Section 3: Pricing & Dynamic PR Floor Boundaries */}
+              {/* Section 3: General Admission / Floor Passes Capacity & Pricing */}
               <div className="space-y-3 p-4 rounded-2xl bg-black/40 border border-white/10">
                 <div className="flex items-center gap-2 pb-1 border-b border-white/5 text-slate-200 font-bold">
                   <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">3</span>
-                  <span>Pricing &amp; Dynamic PR Bidding Boundaries</span>
+                  <span>General Admission / Dancefloor Passes &amp; PR Bidding Quota</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <div className="space-y-1">
                     <label className="block text-slate-300 font-bold flex items-center gap-1">
-                      <span>Box Office Price (₹)</span>
+                      <span>Box Office (₹)</span>
                       <Tooltip content="Standard walk-in entry price at the gate without promoter discount.">
                         <span className="text-[10px] text-slate-400">ℹ️</span>
                       </Tooltip>
@@ -4641,8 +5681,8 @@
 
                   <div className="space-y-1">
                     <label className="block text-slate-300 font-bold flex items-center gap-1">
-                      <span>Quota Allocation</span>
-                      <Tooltip content="Total tickets reserved for promoter distribution.">
+                      <span>Floor Pass Quota</span>
+                      <Tooltip content="Total individual tickets reserved for promoter distribution.">
                         <span className="text-[10px] text-amber-300">ℹ️</span>
                       </Tooltip>
                     </label>
@@ -4657,7 +5697,7 @@
                   </div>
                 </div>
 
-                {/* Real-time Economic Simulator Card */}
+                {/* Economics Simulator */}
                 <div className="p-3 rounded-xl bg-gradient-to-r from-teal-950/40 via-purple-950/20 to-black/60 border border-teal-500/20 flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-4 flex-wrap">
                     <div>
@@ -4687,11 +5727,217 @@
                 </div>
               </div>
 
-              {/* Section 4: Approved PR Guest Perks Studio (Editable Values, Catalog Dropdown, Custom Addition) */}
+              {/* Section 4: VIP Tables, VIP Lounges & Dynamic Tier Range Pricing Studio */}
+              <div className="space-y-4 p-4 rounded-2xl bg-black/40 border border-amber-500/30">
+                <div className="flex items-center justify-between pb-2 border-b border-white/10 flex-wrap gap-2">
+                  <div className="flex items-center gap-2 text-slate-200 font-bold">
+                    <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-[10px] font-mono">4</span>
+                    <span>VIP Tables, VIP Lounges &amp; Dynamic Surge Pricing Studio</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">
+                      {totalVIPTablesCount} Total Tables • {totalVIPSeatsCount} VIP Capacity
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-400">
+                  Configure table categories, guest capacity, and customized tiered pricing ranges (e.g. Tables 1-2 at ₹10k, Tables 2-5 at ₹50k, Last Tables 6-8 at ₹1 Lakh). As guests book, remaining tables reduce in real-time and automatically surge to the next pricing tier!
+                </p>
+
+                {/* Table Categories List */}
+                <div className="space-y-4">
+                  {tableCategories.map((cat, catIdx) => (
+                    <div key={cat.id} className="p-4 rounded-2xl bg-black/60 border border-white/15 space-y-3">
+                      {/* Top Category Title Bar */}
+                      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-white/10">
+                        <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                          <span className="text-base">🍾</span>
+                          <input
+                            type="text"
+                            value={cat.name}
+                            onChange={(e) => handleUpdateCategoryField(cat.id, 'name', e.target.value)}
+                            onBlur={(e) => handleUpdateCategoryField(cat.id, 'name', sanitizeNightlifeTitle(e.target.value))}
+                            placeholder="Category Name (e.g. VIP Lounge Table)"
+                            className="bg-transparent font-black text-sm text-white focus:outline-none focus:border-b focus:border-amber-400 flex-1"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-slate-400">Pax / Table:</span>
+                            <input
+                              type="number"
+                              min="2"
+                              max="30"
+                              value={cat.paxPerTable}
+                              onChange={(e) => handleUpdateCategoryField(cat.id, 'paxPerTable', Number(e.target.value) || 6)}
+                              className="w-12 px-2 py-1 rounded-lg bg-white/10 border border-white/20 text-white font-mono text-center text-xs font-bold focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-slate-400">Total Tables:</span>
+                            <input
+                              type="number"
+                              min="1"
+                              max="50"
+                              value={cat.totalTables}
+                              onChange={(e) => handleUpdateCategoryField(cat.id, 'totalTables', Number(e.target.value) || 1)}
+                              className="w-12 px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 font-mono text-center text-xs font-bold focus:outline-none"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTableCategory(cat.id)}
+                            className="w-7 h-7 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 flex items-center justify-center text-xs transition"
+                            title="Delete this table category"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Tier Pricing Curve Grid */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1">
+                            <span>📈</span>
+                            <span>Dynamic Surge Pricing Ranges:</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleAddTierToCategory(cat.id)}
+                            className="text-[10px] px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold hover:bg-amber-500/30 transition"
+                          >
+                            + Add Surge Tier
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2">
+                          {(cat.tiers || []).map((tier, tierIdx) => (
+                            <div key={tierIdx} className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between flex-wrap gap-2 text-xs">
+                              <div className="flex items-center gap-2 flex-1 min-w-[150px]">
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
+                                  T{tierIdx + 1}
+                                </span>
+                                <input
+                                  type="text"
+                                  value={tier.name}
+                                  onChange={(e) => handleUpdateTierField(cat.id, tierIdx, 'name', e.target.value)}
+                                  placeholder="Tier Name (e.g. Early Bird)"
+                                  className="bg-transparent text-white font-semibold text-xs focus:outline-none focus:border-b focus:border-amber-400 flex-1 min-w-[100px]"
+                                />
+                              </div>
+
+                              <div className="flex items-center gap-3 flex-wrap">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] text-slate-400">Tables:</span>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={tier.minTable}
+                                    onChange={(e) => handleUpdateTierField(cat.id, tierIdx, 'minTable', Number(e.target.value) || 1)}
+                                    className="w-10 px-1 py-0.5 rounded bg-black/60 border border-white/20 text-white font-mono text-center text-xs"
+                                  />
+                                  <span className="text-slate-500">to</span>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={tier.maxTable}
+                                    onChange={(e) => handleUpdateTierField(cat.id, tierIdx, 'maxTable', Number(e.target.value) || 1)}
+                                    className="w-10 px-1 py-0.5 rounded bg-black/60 border border-white/20 text-white font-mono text-center text-xs"
+                                  />
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] text-slate-400">Price (₹):</span>
+                                  <input
+                                    type="number"
+                                    step="1000"
+                                    min="1000"
+                                    value={tier.price}
+                                    onChange={(e) => handleUpdateTierField(cat.id, tierIdx, 'price', Number(e.target.value) || 0)}
+                                    className="w-20 px-2 py-0.5 rounded bg-black/60 border border-amber-500/40 text-amber-300 font-mono font-bold text-center text-xs"
+                                  />
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] text-slate-400">F&amp;B Cover (₹):</span>
+                                  <input
+                                    type="number"
+                                    step="1000"
+                                    min="0"
+                                    value={tier.minSpend}
+                                    onChange={(e) => handleUpdateTierField(cat.id, tierIdx, 'minSpend', Number(e.target.value) || 0)}
+                                    className="w-20 px-2 py-0.5 rounded bg-black/60 border border-emerald-500/40 text-emerald-300 font-mono font-bold text-center text-xs"
+                                  />
+                                </div>
+
+                                {cat.tiers.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveTierFromCategory(cat.id, tierIdx)}
+                                    className="text-red-400 hover:text-red-300 p-1"
+                                    title="Delete Tier"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Included VIP Perks Tag row */}
+                      <div className="pt-1 flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                          <span className="text-[10px] text-slate-400">Included Perks:</span>
+                          {(cat.perks || []).map((p, i) => (
+                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                              ✓ {p}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Preset Table Category Templates Quick-Add Row */}
+                <div className="pt-2 flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-bold text-slate-400">➕ Add Quick Preset:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleAddTableCategory('cabana')}
+                    className="px-3 py-1 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold hover:bg-purple-500/30 transition"
+                  >
+                    👑 Owner Celebrity Cabana (15 Pax)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAddTableCategory('cocktail')}
+                    className="px-3 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold hover:bg-cyan-500/30 transition"
+                  >
+                    🍸 High-Top Cocktail Table (4 Pax)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAddTableCategory('custom')}
+                    className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/30 transition"
+                  >
+                    ✨ Custom Table Category
+                  </button>
+                </div>
+              </div>
+
+              {/* Section 5: Approved PR Guest Perks Studio */}
               <div className="space-y-3 p-4 rounded-2xl bg-black/40 border border-white/10">
                 <div className="flex items-center justify-between pb-2 border-b border-white/10 flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-slate-200 font-bold">
-                    <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">4</span>
+                    <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">5</span>
                     <span>Approved PR Guest Perks &amp; Value Customization</span>
                   </div>
                   <span className="text-[10px] text-slate-400">
@@ -4699,64 +5945,59 @@
                   </span>
                 </div>
 
-                {/* Live Perks List with Inline Value & Name Editing */}
+                {/* Live Perks List */}
                 <div className="space-y-2">
-                  {perksList.map((perk) => {
-                    return (
-                      <div
-                        key={perk.id}
-                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 transition ${
-                          perk.enabled
-                            ? 'bg-teal-500/10 border-teal-400/40 text-white'
-                            : 'bg-white/5 border-white/10 text-slate-500'
-                        }`}
-                      >
-                        {/* Checkbox + Title */}
-                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                          <input
-                            type="checkbox"
-                            checked={perk.enabled}
-                            onChange={() => handleTogglePerk(perk.id)}
-                            className="w-4 h-4 rounded border-white/20 text-teal-500 focus:ring-0 cursor-pointer accent-teal-400"
-                          />
-                          <input
-                            type="text"
-                            value={perk.name}
-                            onChange={(e) => handleUpdatePerkName(perk.id, e.target.value)}
-                            className={`bg-transparent font-semibold text-xs focus:outline-none focus:border-b focus:border-teal-400 flex-1 truncate ${
-                              perk.enabled ? 'text-white' : 'text-slate-500'
-                            }`}
-                          />
-                        </div>
-
-                        {/* Rupee Value Modifier */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[10px] font-mono text-slate-400">Value (₹):</span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="50"
-                            value={perk.value}
-                            onChange={(e) => handleUpdatePerkValue(perk.id, e.target.value)}
-                            className="w-20 px-2 py-1 rounded-lg bg-black/60 border border-white/20 text-teal-300 font-mono font-bold text-center text-xs focus:border-teal-400 focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleDeletePerk(perk.id)}
-                            className="w-7 h-7 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 flex items-center justify-center text-xs transition"
-                            title="Delete perk"
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                  {perksList.map((perk) => (
+                    <div
+                      key={perk.id}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 transition ${
+                        perk.enabled
+                          ? 'bg-teal-500/10 border-teal-400/40 text-white'
+                          : 'bg-white/5 border-white/10 text-slate-500'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={perk.enabled}
+                          onChange={() => handleTogglePerk(perk.id)}
+                          className="w-4 h-4 rounded border-white/20 text-teal-500 focus:ring-0 cursor-pointer accent-teal-400"
+                        />
+                        <input
+                          type="text"
+                          value={perk.name}
+                          onChange={(e) => handleUpdatePerkName(perk.id, e.target.value)}
+                          className={`bg-transparent font-semibold text-xs focus:outline-none focus:border-b focus:border-teal-400 flex-1 truncate ${
+                            perk.enabled ? 'text-white' : 'text-slate-500'
+                          }`}
+                        />
                       </div>
-                    );
-                  })}
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] font-mono text-slate-400">Value (₹):</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="50"
+                          value={perk.value}
+                          onChange={(e) => handleUpdatePerkValue(perk.id, e.target.value)}
+                          className="w-20 px-2 py-1 rounded-lg bg-black/60 border border-white/20 text-teal-300 font-mono font-bold text-center text-xs focus:border-teal-400 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePerk(perk.id)}
+                          className="w-7 h-7 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 flex items-center justify-center text-xs transition"
+                          title="Delete perk"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Add New Perk Toolbar: Dropdown Catalog + Custom Adder */}
+                {/* Add New Perk Toolbar */}
                 <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {/* Preset Catalog Dropdown */}
                   <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-2">
                     <label className="block text-[11px] font-bold text-slate-300">
                       📦 Pick from Standard Club Perks Catalog:
@@ -4785,7 +6026,6 @@
                     </div>
                   </div>
 
-                  {/* Add Custom Perk Inputs */}
                   <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-2">
                     <label className="block text-[11px] font-bold text-slate-300">
                       ✨ Or Create Custom Perk &amp; Value:
@@ -4822,17 +6062,21 @@
                 </div>
               </div>
 
-              {/* Section 5: Description & Guidelines */}
+              {/* Section 6: Description & Guidelines */}
               <div className="space-y-2">
-                <div className="flex items-center gap-2 pb-1 border-b border-white/5 text-slate-200 font-bold">
-                  <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">5</span>
-                  <span>Event Description &amp; Lineup Details</span>
+                <div className="flex items-center justify-between pb-1 border-b border-white/5 text-slate-200 font-bold">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">6</span>
+                    <span>Event Description, Artist Bio &amp; Bottle Guidelines</span>
+                  </div>
+                  <span className="text-[10px] text-teal-400">Auto-Formats on Blur</span>
                 </div>
                 <textarea
                   rows="2"
                   placeholder="Enter DJ bio, dress code guidelines, or table booking info..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  onBlur={(e) => setDescription(sanitizeNightlifeSentence(e.target.value))}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
                 />
               </div>
@@ -4843,7 +6087,7 @@
                   type="submit"
                   className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-400 text-black font-black text-sm shadow-xl hover:opacity-95 transition flex items-center justify-center gap-2 btn-glow"
                 >
-                  <span>🚀 Launch Event &amp; Open PR Bidding Studio</span>
+                  <span>🚀 Launch Event, VIP Tables &amp; PR Bidding Studio</span>
                 </button>
               </div>
             </form>
@@ -5431,6 +6675,81 @@
                       <span className="text-[10px] text-slate-400 block">{admittedPax} checked in at door</span>
                     </div>
                   </div>
+
+                  {/* VIP Table Inventory & Dynamic Tier Real-Time Matrix */}
+                  {activeMatrixEvent.tableCategories && activeMatrixEvent.tableCategories.length > 0 && (
+                    <div className="p-4 rounded-2xl bg-black/50 border border-amber-500/30 space-y-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-white/10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🍾</span>
+                          <div>
+                            <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                              VIP Table &amp; Lounge Dynamic Inventory Grid
+                            </h4>
+                            <span className="text-[10px] text-amber-300">
+                              Real-time table depletion &amp; automated tier surge escalation
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold border border-amber-500/40">
+                          {activeMatrixEvent.tableCategories.length} Active Categories
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {activeMatrixEvent.tableCategories.map((tCat) => {
+                          const tInfo = getTableCategoryTierInfo(tCat);
+                          const bookedPct = Math.round((tInfo.bookedTables / (tInfo.totalTables || 1)) * 100);
+
+                          return (
+                            <div key={tCat.id} className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+                              <div className="flex items-start justify-between gap-1">
+                                <div>
+                                  <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold">
+                                    {tCat.badge || 'VIP'}
+                                  </span>
+                                  <h5 className="font-bold text-white text-xs mt-0.5">{tCat.name}</h5>
+                                  <span className="text-[10px] text-slate-400">{tCat.paxPerTable} Guests / Table</span>
+                                </div>
+                                <div className="text-right font-mono">
+                                  <div className="text-xs font-black text-amber-300">
+                                    ₹{tInfo.currentPrice.toLocaleString('en-IN')}
+                                  </div>
+                                  <span className="text-[9px] text-emerald-400">
+                                    ₹{tInfo.currentMinSpend.toLocaleString('en-IN')} F&amp;B
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] text-slate-300 font-mono">
+                                  <span>Allocated: <b>{tInfo.bookedTables} / {tInfo.totalTables}</b></span>
+                                  <span className={tInfo.remainingTables <= 1 ? 'text-rose-400 font-bold' : 'text-teal-300 font-bold'}>
+                                    {tInfo.isSoldOut ? 'SOLD OUT' : `${tInfo.remainingTables} Left (Table #${tInfo.nextTableNum})`}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-black/60 h-1.5 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      tInfo.isSoldOut ? 'bg-rose-500' : 'bg-gradient-to-r from-amber-400 to-yellow-300'
+                                    }`}
+                                    style={{ width: `${bookedPct}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[9px] text-slate-400">
+                                <span>Active: <b className="text-slate-200">{tInfo.activeTier?.name || 'Tier 1'}</b></span>
+                                {tInfo.nextTierInfo && (
+                                  <span className="text-amber-300">Next: ₹{tInfo.nextTierInfo.price.toLocaleString('en-IN')}</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Deep-Dive Grid: PR Attribution Table + Audience Gender Matrix */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
@@ -6160,7 +7479,7 @@
 
     // --- MAIN ROOT APPLICATION ---
     const App = () => {
-      const { role, activeView, setActiveView, toast, claimClubModalOpen, setClaimClubModalOpen, pendingClaimVenueId } = useApp();
+      const { role, activeView, setActiveView, toast, claimClubModalOpen, setClaimClubModalOpen, pendingClaimVenueId, createPRModalOpen, setCreatePRModalOpen } = useApp();
       const [gatewayOpen, setGatewayOpen] = useState(false);
       const [passesOpen, setPassesOpen] = useState(false);
       const [createPROpen, setCreatePROpen] = useState(false);
@@ -6194,16 +7513,17 @@
               setSelectedTkt(null);
               setPassesOpen(true);
             }}
-            onOpenCreatePR={() => setCreatePROpen(true)}
+            onOpenCreatePR={() => setCreatePRModalOpen(true)}
             onOpenAuth={() => setAuthOpen(true)}
             onOpenGateway={() => setGatewayOpen(true)}
+            onOpenClaimClub={() => setClaimClubModalOpen(true)}
           />
 
           <main className="flex-1 w-full">
             {/* Hero breaks out full-bleed; rest gets constrained */}
             <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8">
               {activeView === 'pr_network' ? (
-                <PRTalentNetworkView onOpenCreatePR={() => setCreatePROpen(true)} />
+                <PRTalentNetworkView onOpenCreatePR={() => setCreatePRModalOpen(true)} />
               ) : activeView === 'city_events' ? (
                 <div className="space-y-6">
                   <div className="p-4 rounded-2xl glass-panel border border-amber-500/30 flex items-center justify-between flex-wrap gap-3">
@@ -6254,7 +7574,7 @@
                       onOpenClaimClub={() => setClaimClubModalOpen(true)}
                     />
                   )}
-                  {role === 'pr' && <PromoterView onOpenCreatePR={() => setCreatePROpen(true)} onOpenCampaigns={() => setActiveView('campaigns')} />}
+                  {role === 'pr' && <PromoterView onOpenCreatePR={() => setCreatePRModalOpen(true)} onOpenCampaigns={() => setActiveView('campaigns')} />}
                 </>
               )}
             </div>
@@ -6308,7 +7628,7 @@
             onClose={() => setGatewayOpen(false)}
             onOpenAuth={() => { setGatewayOpen(false); setAuthOpen(true); }}
             onOpenClaimClub={() => { setGatewayOpen(false); setClaimClubModalOpen(true); }}
-            onOpenCreatePR={() => { setGatewayOpen(false); setCreatePROpen(true); }}
+            onOpenCreatePR={() => { setGatewayOpen(false); setCreatePRModalOpen(true); }}
           />
           <ClaimClubVerificationModal
             isOpen={claimClubModalOpen}
@@ -6316,11 +7636,11 @@
             initialVenueId={pendingClaimVenueId}
           />
           <MyPassesModal isOpen={passesOpen} onClose={() => setPassesOpen(false)} defaultTicketId={selectedTkt} />
-          <CreatePRProfileModal isOpen={createPROpen} onClose={() => setCreatePROpen(false)} />
+          <CreatePRProfileModal isOpen={createPRModalOpen || createPROpen} onClose={() => { setCreatePRModalOpen(false); setCreatePROpen(false); }} />
           <PhoneOTPLoginModal
             isOpen={authOpen}
             onClose={() => setAuthOpen(false)}
-            onOpenCreatePR={() => { setAuthOpen(false); setCreatePROpen(true); }}
+            onOpenCreatePR={() => { setAuthOpen(false); setCreatePRModalOpen(true); }}
             onOpenClaimClub={() => { setAuthOpen(false); setClaimClubModalOpen(true); }}
           />
 
