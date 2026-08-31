@@ -186,3 +186,17 @@
   7. **Test suite** — `tests/` (auth, booking, security, ledger, webhooks, concurrency) → **32 passed**.
 - **Verification:** `pytest` 32 passed; `uvicorn backend.main:app` boots, `/api/health` OK, events served w/ bids; `npm run build` succeeds.
 - **Artifacts:** `PRODUCTION_READINESS_REPORT.md`, `backend/{db,seed,notifications}.py`, `tests/`, `load_tests/`, `.env.example`, `pytest.ini`, updated `requirements*.txt`.
+## Turn: Live Browser Verification Tour & Real-Time Headful Agentic Session
+- **User Request:** "I need you to run in preview mode and check if all going well...I should see all chrome window opened in real time and agentic control"
+- **Actions Executed:**
+  1. Verified local HTTP server running at `http://127.0.0.1:3000/index.html`.
+  2. Executed autonomous `browser_subagent` session navigating the platform:
+     - Browsed live events feed.
+     - Opened EventDetailModal for *Sunburn Arena ft. KSHMR & Friends*.
+     - Toggled into **🍾 VIP Tables & Lounges** tab.
+     - Selected *VIP Lounge Table* category (6 Guests, ₹45,000 F&B credit cover).
+     - Executed table reservation.
+     - Inspected newly minted VIP Table pass (`TKT-NV-E6A52D50BB`) allocated to **Table #1** with rotating HMAC QR code.
+  3. Captured step-by-step UI screenshots and generated WebP session animation video (`live_preview_demo_-62135596800000.webp`).
+  4. Launched live headful Chrome window on the user's desktop for real-time interaction.
+  5. Updated `walkthrough.md` with media artifacts.
