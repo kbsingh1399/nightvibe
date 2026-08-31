@@ -4117,6 +4117,7 @@
     };
 
     // --- CREATE EVENT MODAL COMPONENT (Club Owner Event Creation & PR Campaign Launcher) ---
+    // --- CREATE EVENT MODAL COMPONENT (Club Owner Studio Event Creator & PR Campaign Launcher) ---
     const CreateEventModal = ({ isOpen, onClose, onEventCreated }) => {
       const { activeOwnerVenueId, venues, createEvent, showToast } = useApp();
       const venue = venues.find((v) => v.id === activeOwnerVenueId) || venues[0];
@@ -4130,31 +4131,136 @@
       const [commissionCap, setCommissionCap] = useState('350');
       const [capacityQuota, setCapacityQuota] = useState('300');
       const [description, setDescription] = useState('');
+
+      // Artwork state: 'preset' | 'upload' | 'url'
+      const [artworkMode, setArtworkMode] = useState('preset');
       const [selectedImage, setSelectedImage] = useState('https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80');
-      const [selectedPerks, setSelectedPerks] = useState(['perk_shooter', 'perk_fasttrack']);
+      const [customUrlInput, setCustomUrlInput] = useState('');
+      const [uploadedFileName, setUploadedFileName] = useState('');
+      const fileInputRef = React.useRef(null);
+
+      // Perks state: Array of perks with editable values and enabled status
+      const [perksList, setPerksList] = useState([
+        { id: 'perk_shooter', name: '1 Free Craft Shooter / Cocktail', value: 350, enabled: true, isCustom: false },
+        { id: 'perk_fasttrack', name: 'Fast-Track Queue Bypass (<5m wait)', value: 400, enabled: true, isCustom: false },
+        { id: 'perk_female_free', name: 'Female Guestlist Free Entry (before 11 PM)', value: 500, enabled: true, isCustom: false },
+        { id: 'perk_table_discount', name: '10% Off Bottle Service Menu', value: 800, enabled: false, isCustom: false },
+        { id: 'perk_backstage', name: 'Backstage Lounge / DJ Booth Access', value: 1200, enabled: false, isCustom: false },
+      ]);
+
+      const [catalogSelectedPerk, setCatalogSelectedPerk] = useState('');
+      const [newCustomPerkName, setNewCustomPerkName] = useState('');
+      const [newCustomPerkValue, setNewCustomPerkValue] = useState('500');
 
       if (!isOpen) return null;
 
       const PRESET_COVERS = [
-        { label: 'Techno / Underground', url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80' },
-        { label: 'Arena / EDM Concert', url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80' },
-        { label: 'Sunset / Sundowner', url: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1200&q=80' },
-        { label: 'Neon Velvet Lounge', url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80' },
-        { label: 'Rooftop / Skyline VIP', url: 'https://images.unsplash.com/photo-1574391884720-bbc3740c59d1?auto=format&fit=crop&w=1200&q=80' },
+        { label: 'Techno / Underground', genre: 'Techno', url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80' },
+        { label: 'Arena / EDM Concert', genre: 'EDM', url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80' },
+        { label: 'Sunset / Sundowner', genre: 'Sundowner', url: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1200&q=80' },
+        { label: 'Neon Velvet Lounge', genre: 'Lounge', url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80' },
+        { label: 'Rooftop / Skyline VIP', genre: 'Rooftop', url: 'https://images.unsplash.com/photo-1574391884720-bbc3740c59d1?auto=format&fit=crop&w=1200&q=80' },
+        { label: 'Bollywood Glamour Night', genre: 'Bollywood', url: 'https://images.unsplash.com/photo-1545128485-c400e7702796?auto=format&fit=crop&w=1200&q=80' },
       ];
 
-      const AVAILABLE_PERKS = [
-        { id: 'perk_shooter', name: '1 Free Craft Shooter / Cocktail', value: 350 },
-        { id: 'perk_fasttrack', name: 'Fast-Track Queue Bypass (<5m wait)', value: 400 },
-        { id: 'perk_female_free', name: 'Female Guestlist Free Entry (before 11 PM)', value: 500 },
-        { id: 'perk_table_discount', name: '10% Off Bottle Service Menu', value: 800 },
-        { id: 'perk_backstage', name: 'Backstage Lounge / DJ Booth Access', value: 1200 },
+      const PERK_CATALOG = [
+        { id: 'perk_champagne', name: 'Complimentary Welcome Champagne Flute', defaultValue: 600 },
+        { id: 'perk_valet', name: 'Reserved VIP Valet Parking Spot', defaultValue: 300 },
+        { id: 'perk_hookah', name: '1 Complimentary Herbal Hookah on Table', defaultValue: 900 },
+        { id: 'perk_photographer', name: 'Private Dedicated Photographer / Reel', defaultValue: 1500 },
+        { id: 'perk_bogo_drinks', name: 'Buy 1 Get 1 on Premium Spirits (till 11 PM)', defaultValue: 700 },
+        { id: 'perk_afterparty', name: 'VIP Access to Exclusive VIP Afterparty', defaultValue: 1000 },
+        { id: 'perk_table_credit', name: '₹1,000 F&B Table Cover Credit', defaultValue: 1000 },
       ];
 
-      const togglePerk = (pId) => {
-        setSelectedPerks((prev) =>
-          prev.includes(pId) ? prev.filter((id) => id !== pId) : [...prev, pId]
+      const handleFileUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+          showToast('Please select a valid image file (JPG, PNG, WEBP)', 'error');
+          return;
+        }
+        if (file.size > 8 * 1024 * 1024) {
+          showToast('Image size exceeds 8MB limit', 'error');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setSelectedImage(event.target.result);
+          setUploadedFileName(file.name);
+          showToast(`Cover artwork loaded: ${file.name}`, 'success');
+        };
+        reader.readAsDataURL(file);
+      };
+
+      const handleAddCatalogPerk = () => {
+        if (!catalogSelectedPerk) return;
+        const catalogItem = PERK_CATALOG.find((p) => p.id === catalogSelectedPerk);
+        if (!catalogItem) return;
+        
+        // Check if already in list
+        const exists = perksList.some((p) => p.name.toLowerCase() === catalogItem.name.toLowerCase());
+        if (exists) {
+          showToast('This perk is already in your list', 'info');
+          return;
+        }
+
+        setPerksList((prev) => [
+          ...prev,
+          {
+            id: `perk_${Date.now()}`,
+            name: catalogItem.name,
+            value: catalogItem.defaultValue,
+            enabled: true,
+            isCustom: true,
+          },
+        ]);
+        setCatalogSelectedPerk('');
+        showToast(`Added: ${catalogItem.name}`, 'success');
+      };
+
+      const handleAddCustomPerk = () => {
+        if (!newCustomPerkName.trim()) {
+          showToast('Please enter a perk name', 'error');
+          return;
+        }
+        const val = Number(newCustomPerkValue) || 500;
+        setPerksList((prev) => [
+          ...prev,
+          {
+            id: `custom_perk_${Date.now()}`,
+            name: newCustomPerkName.trim(),
+            value: val,
+            enabled: true,
+            isCustom: true,
+          },
+        ]);
+        setNewCustomPerkName('');
+        setNewCustomPerkValue('500');
+        showToast('Custom perk added to active roster', 'success');
+      };
+
+      const handleTogglePerk = (id) => {
+        setPerksList((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, enabled: !p.enabled } : p))
         );
+      };
+
+      const handleUpdatePerkValue = (id, newVal) => {
+        const num = Math.max(0, Number(newVal) || 0);
+        setPerksList((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, value: num } : p))
+        );
+      };
+
+      const handleUpdatePerkName = (id, newName) => {
+        setPerksList((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, name: newName } : p))
+        );
+      };
+
+      const handleDeletePerk = (id) => {
+        setPerksList((prev) => prev.filter((p) => p.id !== id));
       };
 
       const handleSubmit = (e) => {
@@ -4164,7 +4270,23 @@
           return;
         }
 
-        const approvedPerkObjects = AVAILABLE_PERKS.filter((p) => selectedPerks.includes(p.id));
+        const bPrice = Number(basePrice) || 2000;
+        const fPrice = Number(floorPrice) || 1600;
+        const cCap = Number(commissionCap) || 350;
+        const qAlloc = Number(capacityQuota) || 300;
+
+        if (fPrice > bPrice) {
+          showToast('Floor Price cannot exceed Box Office Price', 'error');
+          return;
+        }
+
+        const activePerkObjects = perksList
+          .filter((p) => p.enabled)
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            value: p.value,
+          }));
 
         const newEvent = {
           title: title.trim(),
@@ -4172,241 +4294,556 @@
           date,
           time,
           image: selectedImage,
-          basePrice: Number(basePrice) || 2000,
-          floorPrice: Number(floorPrice) || 1600,
-          commissionCap: Number(commissionCap) || 350,
-          capacityQuota: Number(capacityQuota) || 300,
+          basePrice: bPrice,
+          floorPrice: fPrice,
+          commissionCap: cCap,
+          capacityQuota: qAlloc,
           description: description.trim() || `Exclusive ${genre} event at ${venue.name}. Curated crowd, premium sound, and dynamic PR deals.`,
-          approvedPerks: approvedPerkObjects,
+          approvedPerks: activePerkObjects,
         };
 
         createEvent(newEvent);
         window.confetti && window.confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
         window.SoundEngine?.play('success');
+        showToast(`🎉 "${newEvent.title}" is live for PR Bidding!`, 'success');
         onClose();
         if (onEventCreated) onEventCreated();
       };
 
-      if (!isOpen) return null;
+      const numBase = Number(basePrice) || 2000;
+      const numFloor = Number(floorPrice) || 1600;
+      const numCap = Number(commissionCap) || 350;
+      const numQuota = Number(capacityQuota) || 300;
+      const maxDiscount = Math.max(0, numBase - numFloor);
+      const discountPct = Math.round((maxDiscount / (numBase || 1)) * 100);
+      const projectedGrossFloor = numQuota * numFloor;
+      const projectedPRPool = numQuota * numCap;
 
       return ReactDOM.createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 md:p-6 modal-backdrop-blur animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl glass-panel border border-teal-500/30 overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            
-            {/* Header */}
-            <div className="p-5 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-teal-950/40 via-black/40 to-black/60 shrink-0">
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 md:p-6 modal-backdrop-blur animate-fade-in overflow-hidden"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+          <div
+            className="relative w-full max-w-3xl max-h-[92vh] flex flex-col rounded-3xl glass-panel border border-teal-500/40 overflow-hidden shadow-2xl bg-[#090d16]/95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Pinned Glass Header */}
+            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-teal-950/70 via-[#0a101d]/90 to-black/80 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-xl">
+                <div className="w-11 h-11 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-2xl shadow-inner shadow-teal-500/20">
                   🎉
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                    <span>Host / Create New Event</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                      CLUB EVENT STUDIO
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                       {venue.name}
                     </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
+                    Host &amp; Launch New Nightlife Event
                   </h3>
-                  <p className="text-xs text-slate-400">Launch club night, set price floor &amp; invite verified PR promoters to bid</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center text-sm"
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center text-sm transition"
+                title="Close"
               >
                 ✕
               </button>
             </div>
 
-            {/* Scrollable Form Body */}
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 text-xs">
+            {/* Scrollable Form Body (Strictly overflow-x-hidden to eliminate horizontal scrollbar) */}
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-6 text-xs text-slate-300">
               
-              {/* Event Title & Genre */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="block text-slate-300 font-bold">Event Title &amp; Artist Lineup *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Boiler Room Mumbai — Underground Showcase"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white placeholder-slate-500 focus:border-teal-400 focus:outline-none"
-                  />
+              {/* Section 1: Basic Event Details & Genre */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 pb-1 border-b border-white/5 text-slate-200 font-bold">
+                  <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">1</span>
+                  <span>Basic Event Details &amp; Music Genre</span>
                 </div>
-                <div className="space-y-1">
-                  <label className="block text-slate-300 font-bold">Music Genre / Vibe</label>
-                  <select
-                    value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
-                  >
-                    <option value="Techno & Underground">Techno &amp; Underground</option>
-                    <option value="Commercial EDM">Commercial EDM</option>
-                    <option value="Bollywood Club">Bollywood Club</option>
-                    <option value="Sunset Beach & Sundowner">Sunset Sundowner</option>
-                    <option value="Hip-Hop & Trap">Hip-Hop &amp; Trap</option>
-                    <option value="House & Nu-Disco">House &amp; Nu-Disco</option>
-                  </select>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="block text-slate-300 font-bold">Event Title &amp; Artist Lineup *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Boiler Room Mumbai — Underground Showcase ft. Anyma"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white placeholder-slate-500 focus:border-teal-400 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-slate-300 font-bold">Music Genre / Vibe</label>
+                    <select
+                      value={genre}
+                      onChange={(e) => setGenre(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
+                    >
+                      <option value="Techno & Underground">Techno &amp; Underground</option>
+                      <option value="Commercial EDM">Commercial EDM</option>
+                      <option value="Bollywood Club">Bollywood Club</option>
+                      <option value="Sunset Beach & Sundowner">Sunset Beach &amp; Sundowner</option>
+                      <option value="Hip-Hop & Trap">Hip-Hop &amp; Trap</option>
+                      <option value="House & Nu-Disco">House &amp; Nu-Disco</option>
+                      <option value="Afrobeat & Amapiano">Afrobeat &amp; Amapiano</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-slate-300 font-bold">Date / Timing Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Saturday, Tonight"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-slate-300 font-bold">Door Gate Hours</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 10:00 PM - 03:30 AM"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Date & Time */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-slate-300 font-bold">Date / Timing Label</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Saturday, Tonight"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-slate-300 font-bold">Door Gate Hours</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 10:00 PM - 03:30 AM"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
-                  />
-                </div>
-              </div>
+              {/* Section 2: Cover Artwork Studio (Presets, File Upload, Direct URL) */}
+              <div className="space-y-3 p-4 rounded-2xl bg-black/40 border border-white/10">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-white/10">
+                  <div className="flex items-center gap-2 text-slate-200 font-bold">
+                    <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">2</span>
+                    <span>Cover Artwork Studio</span>
+                  </div>
 
-              {/* Cover Artwork Presets */}
-              <div className="space-y-2">
-                <label className="block text-slate-300 font-bold">Cover Artwork (Select Preset or Custom)</label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {PRESET_COVERS.map((preset) => (
+                  {/* Artwork Mode Switcher */}
+                  <div className="flex items-center gap-1 p-0.5 rounded-xl bg-white/5 border border-white/10 text-[11px]">
                     <button
                       type="button"
-                      key={preset.label}
-                      onClick={() => setSelectedImage(preset.url)}
-                      className={`p-1.5 rounded-2xl border text-left flex flex-col items-center gap-1 transition ${
-                        selectedImage === preset.url
-                          ? 'border-teal-400 bg-teal-500/20'
-                          : 'border-white/10 bg-white/5 hover:border-white/20'
+                      onClick={() => setArtworkMode('preset')}
+                      className={`px-3 py-1 rounded-lg font-bold transition ${
+                        artworkMode === 'preset'
+                          ? 'bg-teal-500 text-black shadow-md'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      <img src={preset.url} alt={preset.label} className="w-full h-14 rounded-xl object-cover" />
-                      <span className="text-[9px] text-slate-300 font-semibold line-clamp-1 text-center">{preset.label}</span>
+                      🖼️ Curated Presets
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Pricing Controls: Box Office, Floor Price, Commission Cap */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3.5 rounded-2xl bg-black/40 border border-white/10">
-                <div className="space-y-1">
-                  <label className="block text-slate-300 font-bold flex items-center gap-1">
-                    <span>Box Office Price (₹)</span>
-                    <Tooltip content="Standard walk-in entry price at the venue gate without PR discount.">
-                      <span className="text-[10px] text-slate-400">ℹ️</span>
-                    </Tooltip>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={basePrice}
-                    onChange={(e) => setBasePrice(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono focus:border-teal-400 focus:outline-none"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-slate-300 font-bold flex items-center gap-1">
-                    <span>PR Floor Price (₹)</span>
-                    <Tooltip content="Minimum price protection floor set by club. Promoters cannot bid below this threshold.">
-                      <span className="text-[10px] text-teal-300">ℹ️</span>
-                    </Tooltip>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={floorPrice}
-                    onChange={(e) => setFloorPrice(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-teal-500/30 text-teal-300 font-mono font-bold focus:border-teal-400 focus:outline-none"
-                  />
+                    <button
+                      type="button"
+                      onClick={() => setArtworkMode('upload')}
+                      className={`px-3 py-1 rounded-lg font-bold transition ${
+                        artworkMode === 'upload'
+                          ? 'bg-teal-500 text-black shadow-md'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      📤 Upload Artwork
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setArtworkMode('url')}
+                      className={`px-3 py-1 rounded-lg font-bold transition ${
+                        artworkMode === 'url'
+                          ? 'bg-teal-500 text-black shadow-md'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      🔗 Web Image URL
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-slate-300 font-bold flex items-center gap-1">
-                    <span>Commission Cap (₹)</span>
-                    <Tooltip content="Maximum commission paid to PR per ticket. Adjusted by promoter show-up multiplier.">
-                      <span className="text-[10px] text-purple-300">ℹ️</span>
-                    </Tooltip>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={commissionCap}
-                    onChange={(e) => setCommissionCap(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-purple-500/30 text-purple-300 font-mono focus:border-purple-400 focus:outline-none"
-                  />
-                </div>
+                {/* Sub-View: Presets */}
+                {artworkMode === 'preset' && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                    {PRESET_COVERS.map((preset) => {
+                      const isSelected = selectedImage === preset.url;
+                      return (
+                        <button
+                          type="button"
+                          key={preset.label}
+                          onClick={() => setSelectedImage(preset.url)}
+                          className={`p-1.5 rounded-xl border text-left flex flex-col items-center gap-1.5 transition ${
+                            isSelected
+                              ? 'border-teal-400 bg-teal-500/20 ring-2 ring-teal-400/40'
+                              : 'border-white/10 bg-white/5 hover:border-white/20'
+                          }`}
+                        >
+                          <img
+                            src={preset.url}
+                            alt={preset.label}
+                            className="w-full h-16 rounded-lg object-cover"
+                          />
+                          <span className="text-[9px] text-slate-300 font-semibold line-clamp-1 text-center">
+                            {preset.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
-                <div className="space-y-1">
-                  <label className="block text-slate-300 font-bold flex items-center gap-1">
-                    <span>Quota Allocation</span>
-                    <Tooltip content="Total guest passes reserved for PR promoter distribution.">
-                      <span className="text-[10px] text-amber-300">ℹ️</span>
-                    </Tooltip>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={capacityQuota}
-                    onChange={(e) => setCapacityQuota(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-amber-500/30 text-amber-300 font-mono focus:border-amber-400 focus:outline-none"
-                  />
-                </div>
-              </div>
+                {/* Sub-View: File Upload */}
+                {artworkMode === 'upload' && (
+                  <div className="space-y-3">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <div
+                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                      className="cursor-pointer border-2 border-dashed border-teal-500/40 hover:border-teal-400 rounded-2xl p-6 text-center bg-teal-950/20 hover:bg-teal-950/30 transition flex flex-col items-center justify-center gap-2"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-teal-500/20 flex items-center justify-center text-2xl">
+                        📁
+                      </div>
+                      <div>
+                        <p className="font-bold text-white text-sm">Click to choose image file or Drag &amp; Drop here</p>
+                        <p className="text-slate-400 text-[11px] mt-0.5">Supports high-res JPG, PNG, WEBP (Max 8MB)</p>
+                      </div>
+                      {uploadedFileName && (
+                        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/40 text-teal-300 font-mono text-[11px]">
+                          <span>✅ Active Upload:</span>
+                          <span className="font-bold">{uploadedFileName}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-              {/* Approved PR Perks Checkboxes */}
-              <div className="space-y-2">
-                <label className="block text-slate-300 font-bold">Approved PR Guest Perks (Promoters can bundle these in bids):</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {AVAILABLE_PERKS.map((perk) => {
-                    const isChecked = selectedPerks.includes(perk.id);
-                    return (
+                {/* Sub-View: Image URL */}
+                {artworkMode === 'url' && (
+                  <div className="space-y-2">
+                    <label className="block text-slate-300 font-bold">Direct Image Web Address (HTTPS):</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="https://images.unsplash.com/photo-..."
+                        value={customUrlInput}
+                        onChange={(e) => setCustomUrlInput(e.target.value)}
+                        className="flex-1 px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white font-mono text-xs focus:border-teal-400 focus:outline-none"
+                      />
                       <button
                         type="button"
+                        onClick={() => {
+                          if (customUrlInput.trim()) {
+                            setSelectedImage(customUrlInput.trim());
+                            showToast('Applied custom image URL', 'success');
+                          }
+                        }}
+                        className="px-4 py-2 rounded-xl bg-teal-500 text-black font-black hover:opacity-90 transition"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Live WYSIWYG Artwork Preview Banner */}
+                <div className="mt-3 p-3 rounded-xl bg-black/60 border border-white/10 flex items-center gap-3">
+                  <img
+                    src={selectedImage}
+                    alt="Active Preview"
+                    className="w-20 h-14 rounded-lg object-cover border border-white/20 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono font-bold">
+                        LIVE BANNER PREVIEW
+                      </span>
+                      <span className="text-[10px] text-slate-400">{genre}</span>
+                    </div>
+                    <p className="font-bold text-white text-xs truncate mt-0.5">
+                      {title || 'Your Event Title Will Appear Here'}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      {date} • {time} @ {venue.name}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Pricing & Dynamic PR Floor Boundaries */}
+              <div className="space-y-3 p-4 rounded-2xl bg-black/40 border border-white/10">
+                <div className="flex items-center gap-2 pb-1 border-b border-white/5 text-slate-200 font-bold">
+                  <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">3</span>
+                  <span>Pricing &amp; Dynamic PR Bidding Boundaries</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-slate-300 font-bold flex items-center gap-1">
+                      <span>Box Office Price (₹)</span>
+                      <Tooltip content="Standard walk-in entry price at the gate without promoter discount.">
+                        <span className="text-[10px] text-slate-400">ℹ️</span>
+                      </Tooltip>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="100"
+                      value={basePrice}
+                      onChange={(e) => setBasePrice(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono focus:border-teal-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-slate-300 font-bold flex items-center gap-1">
+                      <span>PR Floor Price (₹)</span>
+                      <Tooltip content="Absolute price protection floor. Promoters cannot discount below this minimum.">
+                        <span className="text-[10px] text-teal-300">ℹ️</span>
+                      </Tooltip>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="100"
+                      value={floorPrice}
+                      onChange={(e) => setFloorPrice(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-teal-500/30 text-teal-300 font-mono font-bold focus:border-teal-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-slate-300 font-bold flex items-center gap-1">
+                      <span>Commission Cap (₹)</span>
+                      <Tooltip content="Maximum payout per verified ticket check-in.">
+                        <span className="text-[10px] text-purple-300">ℹ️</span>
+                      </Tooltip>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="50"
+                      value={commissionCap}
+                      onChange={(e) => setCommissionCap(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-purple-500/30 text-purple-300 font-mono focus:border-purple-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-slate-300 font-bold flex items-center gap-1">
+                      <span>Quota Allocation</span>
+                      <Tooltip content="Total tickets reserved for promoter distribution.">
+                        <span className="text-[10px] text-amber-300">ℹ️</span>
+                      </Tooltip>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="10"
+                      value={capacityQuota}
+                      onChange={(e) => setCapacityQuota(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-amber-500/30 text-amber-300 font-mono focus:border-amber-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Real-time Economic Simulator Card */}
+                <div className="p-3 rounded-xl bg-gradient-to-r from-teal-950/40 via-purple-950/20 to-black/60 border border-teal-500/20 flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Max Buyer Discount</span>
+                      <span className="font-mono font-bold text-teal-300 text-xs">
+                        Up to ₹{maxDiscount} OFF ({discountPct}%)
+                      </span>
+                    </div>
+                    <div className="h-6 w-px bg-white/10" />
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Projected Gate Net (at Floor)</span>
+                      <span className="font-mono font-bold text-white text-xs">
+                        ₹{projectedGrossFloor.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="h-6 w-px bg-white/10" />
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Max PR Incentive Pool</span>
+                      <span className="font-mono font-bold text-purple-300 text-xs">
+                        ₹{projectedPRPool.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-[10px] px-2 py-1 rounded bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30">
+                    🛡️ Floor Protection Active
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 4: Approved PR Guest Perks Studio (Editable Values, Catalog Dropdown, Custom Addition) */}
+              <div className="space-y-3 p-4 rounded-2xl bg-black/40 border border-white/10">
+                <div className="flex items-center justify-between pb-2 border-b border-white/10 flex-wrap gap-2">
+                  <div className="flex items-center gap-2 text-slate-200 font-bold">
+                    <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">4</span>
+                    <span>Approved PR Guest Perks &amp; Value Customization</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">
+                    Promoters can bundle enabled perks in their bidding offers
+                  </span>
+                </div>
+
+                {/* Live Perks List with Inline Value & Name Editing */}
+                <div className="space-y-2">
+                  {perksList.map((perk) => {
+                    return (
+                      <div
                         key={perk.id}
-                        onClick={() => togglePerk(perk.id)}
-                        className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition ${
-                          isChecked ? 'bg-teal-500/20 border-teal-400 text-white' : 'bg-white/5 border-white/10 text-slate-400'
+                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 transition ${
+                          perk.enabled
+                            ? 'bg-teal-500/10 border-teal-400/40 text-white'
+                            : 'bg-white/5 border-white/10 text-slate-500'
                         }`}
                       >
-                        <span className="font-semibold">{perk.name}</span>
-                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-black/40 text-teal-300">
-                          ₹{perk.value} val
-                        </span>
-                      </button>
+                        {/* Checkbox + Title */}
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={perk.enabled}
+                            onChange={() => handleTogglePerk(perk.id)}
+                            className="w-4 h-4 rounded border-white/20 text-teal-500 focus:ring-0 cursor-pointer accent-teal-400"
+                          />
+                          <input
+                            type="text"
+                            value={perk.name}
+                            onChange={(e) => handleUpdatePerkName(perk.id, e.target.value)}
+                            className={`bg-transparent font-semibold text-xs focus:outline-none focus:border-b focus:border-teal-400 flex-1 truncate ${
+                              perk.enabled ? 'text-white' : 'text-slate-500'
+                            }`}
+                          />
+                        </div>
+
+                        {/* Rupee Value Modifier */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[10px] font-mono text-slate-400">Value (₹):</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="50"
+                            value={perk.value}
+                            onChange={(e) => handleUpdatePerkValue(perk.id, e.target.value)}
+                            className="w-20 px-2 py-1 rounded-lg bg-black/60 border border-white/20 text-teal-300 font-mono font-bold text-center text-xs focus:border-teal-400 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePerk(perk.id)}
+                            className="w-7 h-7 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 flex items-center justify-center text-xs transition"
+                            title="Delete perk"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
+
+                {/* Add New Perk Toolbar: Dropdown Catalog + Custom Adder */}
+                <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Preset Catalog Dropdown */}
+                  <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                    <label className="block text-[11px] font-bold text-slate-300">
+                      📦 Pick from Standard Club Perks Catalog:
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={catalogSelectedPerk}
+                        onChange={(e) => setCatalogSelectedPerk(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:border-teal-400 focus:outline-none min-w-0"
+                      >
+                        <option value="" className="bg-slate-900 text-slate-400">-- Choose Standard Perk --</option>
+                        {PERK_CATALOG.map((cat) => (
+                          <option key={cat.id} value={cat.id} className="bg-slate-900 text-white">
+                            {cat.name} (₹{cat.defaultValue})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleAddCatalogPerk}
+                        disabled={!catalogSelectedPerk}
+                        className="px-3.5 py-2 rounded-xl bg-teal-500/20 border border-teal-400/40 text-teal-300 font-bold hover:bg-teal-500/40 disabled:opacity-40 transition shrink-0"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Add Custom Perk Inputs */}
+                  <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                    <label className="block text-[11px] font-bold text-slate-300">
+                      ✨ Or Create Custom Perk &amp; Value:
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="e.g. VIP Table Butler"
+                        value={newCustomPerkName}
+                        onChange={(e) => setNewCustomPerkName(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:border-teal-400 focus:outline-none min-w-0"
+                      />
+                      <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl px-2 py-1 shrink-0">
+                        <span className="text-[11px] text-teal-400 font-mono">₹</span>
+                        <input
+                          type="number"
+                          placeholder="500"
+                          min="0"
+                          step="50"
+                          value={newCustomPerkValue}
+                          onChange={(e) => setNewCustomPerkValue(e.target.value)}
+                          className="w-14 bg-transparent text-teal-300 font-mono font-bold text-center text-xs focus:outline-none"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddCustomPerk}
+                        className="px-3.5 py-2 rounded-xl bg-purple-500/20 border border-purple-400/40 text-purple-300 font-bold hover:bg-purple-500/40 transition shrink-0"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Description */}
-              <div className="space-y-1">
-                <label className="block text-slate-300 font-bold">Event Description &amp; Lineup Details</label>
+              {/* Section 5: Description & Guidelines */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 pb-1 border-b border-white/5 text-slate-200 font-bold">
+                  <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">5</span>
+                  <span>Event Description &amp; Lineup Details</span>
+                </div>
                 <textarea
                   rows="2"
                   placeholder="Enter DJ bio, dress code guidelines, or table booking info..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
                 />
               </div>
 
-              {/* Submit CTA */}
+              {/* Pinned Submit CTA */}
               <div className="pt-2">
                 <button
                   type="submit"
                   className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-400 text-black font-black text-sm shadow-xl hover:opacity-95 transition flex items-center justify-center gap-2 btn-glow"
                 >
-                  <span>🚀 Launch Event &amp; Open PR Bidding</span>
+                  <span>🚀 Launch Event &amp; Open PR Bidding Studio</span>
                 </button>
               </div>
             </form>

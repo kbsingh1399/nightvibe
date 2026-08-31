@@ -131,6 +131,28 @@
      - **Cryptographic Claim Certificate**: Upon successful verification, issues a cryptographic claim certificate (`CLAIM-TRILOGY-2717`) with SHA-256 security hash, binds the club to `currentUser.claimedVenues`, and transitions immediately into the Door Scanner Console.
   3. **Single-Account Multi-Role Profile Hub (`PhoneOTPLoginModal`)**:
      - Upgraded user profile view into a 3-in-1 console manager showing active Guest passes, claimed clubs with direct console access and `+ Claim Another Club` CTA, and registered PR Promoter profile status.
-  4. **Verification**:
-     - Executed full Puppeteer headless browser audit (`puppeteer_test_claim_and_personas.js`) capturing 9 high-fidelity screenshots across all steps with zero syntax or runtime errors.
+## Turn: Host / Create Event Studio Redesign (Cover Upload + Dynamic Perks Customizer + Economics Simulator)
+- **User Request:** "Is this UI okay? I don't think so..also we should give option to upload Cover artwork or choose from degault something like that...and value to change Approved PR Guest Perks ..may be choose from dropdown or add new and value modification option against it etc...Think /brainstorming and make it good"
+- **Actions Executed:**
+  1. **Brainstorming & UI/UX Audit**:
+     - Identified visual bugs: ugly horizontal scrollbar at bottom, lack of image upload, lack of perk value editing, static non-interactive perk list.
+  2. **Cover Artwork Studio (`artworkMode: 'preset' | 'upload' | 'url'`)**:
+     - Added 3 interactive tabs: **Curated Presets** (6 high-res nightclub photos), **Direct File Upload** (Drag & Drop + `FileReader` Base64 encoding + active upload badge), and **Web Image URL** (direct link with live test).
+     - Added a real-time **Live WYSIWYG Banner Preview** displaying how the event card will appear on the guest feed.
+  3. **Approved PR Guest Perks Studio**:
+     - Upgraded perk items to support:
+       - Checkbox toggle for active/inactive bundling.
+       - Inline editable perk title.
+       - Direct Rupee value editing (`Value (₹): [ 350 ]` with number input & step controls).
+       - Delete button `🗑️` to remove perks.
+     - Added **Pick from Standard Club Perks Catalog** dropdown (Champagne flute, Valet parking spot, Hookah, Photographer, BOGO drinks, Afterparty access, Table credit).
+     - Added **Create Custom Perk & Value** input pair (`[ Perk Title ] [ ₹ Value ] [+ Add]`).
+  4. **Dynamic PR Economics & Floor Protection Simulator**:
+     - Real-time calculator card showing **Max Buyer Discount Range (₹ / %)**, **Projected Net Gate Revenue (at Floor)**, and **Max PR Incentive Pool** with active floor protection validation.
+  5. **Layout & Scrollbar Elimination**:
+     - Removed the horizontal scrollbar by enforcing `overflow-x-hidden w-full`.
+     - Pinned top header and pinned bottom gradient launch CTA.
+  6. **Verification**:
+     - Audited via Puppeteer capturing 4 comprehensive screenshots across all interaction modes (`01_studio_top_section`, `02_studio_upload_mode`, `03_studio_pricing_and_perks`, `04_studio_bottom_section`).
+
 
