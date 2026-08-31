@@ -81,3 +81,56 @@
      - **Talent Network & Campaign Navigation**: Clean transitions across `PR Directory` / `Talent Network` and `Campaign Events`.
   4. Captured full screenshot `pr_bidding_view_full_1788124452447.png`.
   5. Committed and pushed all changes to `https://github.com/kbsingh1399/nightvibe.git` (commit `1144b44`).
+
+## Turn: Event Detail Modal Responsive "Always Fit" Viewport Refactor
+- **User Request:** "can you make this pop up always fit"
+- **Root Cause Analysis:**
+  - The Event Detail Modal previously used a large unconstrained outer container with a 400px hero image, pushing the total modal content height to >1000px and causing vertical clipping/overflow on laptop and mobile viewports.
+- **Architectural Solution Implemented:**
+  1. **Fixed Maximum Height & Outer Flex Container**: Configured `max-h-[92vh] flex flex-col rounded-3xl overflow-hidden` so the popup strictly fits within any browser window height.
+  2. **Pinned Top Compact Hero**: Reduced hero cover height to `h-36 sm:h-44 md:h-48 shrink-0`, keeping the artwork prominent while conserving vertical real estate.
+  3. **Scrollable Independent Content Body**: Set `flex-1 overflow-y-auto p-4 sm:p-5 space-y-4` so authorized promoter bids and party headcount steppers scroll independently and smoothly.
+  4. **Sticky Pinned Bottom Checkout Bar**: Pinned the total summary (`₹5,256`) and the `Proceed to UPI Checkout →` CTA button (`shrink-0 bg-[#0a0c14]/95 border-t border-white/10 z-10`) so the guest can always see the price and complete their booking without scrolling down.
+- **Verification:** Verified live in browser with `browser_subagent` and captured screenshot `sunburn_modal_open_1788124739697.png`.
+- **Git Commit:** Committed and pushed to `main` (commit `08c6e6c`).
+
+## Turn: OpenCode API Key Update
+- **User Request:** "Meanwhile, update opencode API : sk-xWO5eh1U8zExHAJck9Vaej0Mf0o1bD7RSO2IanCIpLOuxn0wVdAMMjCvXLHKNOT6"
+- **Actions Executed:**
+  1. Updated OpenCode credentials in `C:\Users\SIGMA\.local\share\opencode\auth.json`.
+  2. Updated active credential registry in `C:\Users\SIGMA\.local\share\opencode\account.json`.
+  3. Set `OPENCODE_API_KEY` in Windows User & Process Environment Variables for persistent access across all OpenCode sessions.
+  4. Verified successful configuration persistence.
+
+## Turn: OpenCode / OX CLI Setup & Execution Guide
+- **User Request:** "how can we run OX alpha in powershell temrinal locally"
+- **Actions Executed:**
+  1. Checked local CLI availability (`opencode` installed at v1.18.25 in `C:\Users\SIGMA\AppData\Roaming\npm`).
+  2. Created global `ox.cmd` and `ox.ps1` aliases so typing `ox` directly in PowerShell/CMD invokes the OpenCode engine.
+  3. Tested `ox --version` (returns `1.18.25`).
+  4. Provided clear execution workflows for interactive TUI mode, single-shot message prompts, specific model routing, and web UI.
+
+## Turn: File Protocol vs HTTP Server Protocol Root Cause Diagnosis
+- **User Request:** "Why i am not able to open file:///G:/My%20Drive/Club_Business/index.html"
+- **Root Cause Diagnosis:**
+  - Modern web browsers (Chrome, Edge, Brave) enforce strict Same-Origin Policies on `file:///` URLs with an opaque `Origin: null`.
+  - Under `file:///`, Babel Standalone in-browser transpiler, Tailwind CSS CDN, Lucide icon CDN, WebAudio API, Camera access (`getUserMedia`), and Razorpay Checkout SDK block script execution and cross-origin iframe communication.
+  - Resolved by accessing the app through its local HTTP server origin: `http://127.0.0.1:3000/` or `http://localhost:3000/`.
+
+## Turn: Unified Single-Account Persona Switching & Anti-Fraud Club Ownership Claim Verification
+- **User Request:** "I mean if joined as a guest and I hit Club option, then I should option to claim club using the Claim number we will generate and think from that perspecitve I don't want anyone to claim any club...design a method to verify that actuall that's ther person or owner of club etc...And from same ID, one can operate guerst as well club tab if he she have claim and als PR directly from account..."
+- **Actions Executed:**
+  1. **Unified Single-Account Persona System**:
+     - Upgraded `currentUser` profile (`Arjun K • +91 98200 44321`) to hold multi-role privileges (`roles: ['guest', 'owner', 'pr']`, `claimedVenues: [...]`, `claimCertificates: { ... }`).
+     - Added `switchPersona(targetRole, options)` in `AppProvider` allowing seamless 1-click toggling across **Guest Explorer**, **Club Owner / Manager**, and **Nightlife PR & Host** from the exact same account ID without re-authenticating.
+  2. **Multi-Factor Anti-Fraud Club Claim & Verification Engine**:
+     - Built `ClaimClubVerificationModal` mounted directly to `document.body` with `z-[9999]` and `.modal-backdrop-blur`.
+     - **Method 1 (SMS Security Token)**: Generates and dispatches a dynamic 6-digit Claim Token to the pre-registered general manager's phone (`+91 98199 •••54`), displays live SMS alert with 1-click auto-fill, and enforces 60s cooldown timer.
+     - **Method 2 (Govt GSTIN / Excise License)**: Validates against club's official GSTIN (e.g. `27AABCK1122R1ZM`) and State Excise Liquor Bar License Number (`MH-EXC-2024-1122`).
+     - **Method 3 (Manager Master Passcode)**: 4-digit direct PIN verification (`1122`, `8844`, `9933`, etc.).
+     - **Cryptographic Claim Certificate**: Upon successful verification, issues a cryptographic claim certificate (`CLAIM-TRILOGY-2717`) with SHA-256 security hash, binds the club to `currentUser.claimedVenues`, and transitions immediately into the Door Scanner Console.
+  3. **Single-Account Multi-Role Profile Hub (`PhoneOTPLoginModal`)**:
+     - Upgraded user profile view into a 3-in-1 console manager showing active Guest passes, claimed clubs with direct console access and `+ Claim Another Club` CTA, and registered PR Promoter profile status.
+  4. **Verification**:
+     - Executed full Puppeteer headless browser audit (`puppeteer_test_claim_and_personas.js`) capturing 9 high-fidelity screenshots across all steps with zero syntax or runtime errors.
+

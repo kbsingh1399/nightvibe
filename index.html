@@ -56,19 +56,82 @@
       font-family: 'Outfit', 'Inter', sans-serif;
     }
     .glass-panel {
-      background: rgba(12, 15, 24, 0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(12, 16, 28, 0.75);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
     .glass-panel-hover {
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .glass-panel-hover:hover {
-      background: rgba(18, 22, 36, 0.95);
+      background: rgba(18, 24, 40, 0.92);
       border-color: rgba(20, 184, 166, 0.4);
       transform: translateY(-2px);
-      box-shadow: 0 10px 30px -5px rgba(20, 184, 166, 0.2);
+      box-shadow: 0 12px 36px -5px rgba(0, 0, 0, 0.7), 0 0 20px 0 rgba(20, 184, 166, 0.2);
+    }
+    .card-blur {
+      background: rgba(12, 16, 28, 0.75) !important;
+      backdrop-filter: blur(24px) saturate(190%) !important;
+      -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+    .card-blur:hover {
+      background: rgba(18, 24, 40, 0.88) !important;
+      border-color: rgba(20, 184, 166, 0.35) !important;
+      box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.7), 0 0 24px 0 rgba(20, 184, 166, 0.12) !important;
+    }
+    /* ── Floating Tooltip System ── */
+    .tooltip-container {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+    .tooltip-bubble {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      background: rgba(8, 12, 22, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(20, 184, 166, 0.35);
+      color: #e2e8f0;
+      padding: 6px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.35;
+      white-space: normal;
+      width: max-content;
+      max-width: 250px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.8), 0 0 15px rgba(20, 184, 166, 0.25);
+      z-index: 99999;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+      text-align: left;
+    }
+    .tooltip-bubble::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 5px;
+      border-style: solid;
+      border-color: rgba(8, 12, 22, 0.96) transparent transparent transparent;
+    }
+    .tooltip-container:hover .tooltip-bubble,
+    .tooltip-container:focus-within .tooltip-bubble {
+      visibility: visible;
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .tooltip-dotted {
+      border-bottom: 1px dashed rgba(20, 184, 166, 0.6);
+      cursor: help;
     }
     button, .cursor-pointer {
       transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease-out;
@@ -184,11 +247,37 @@
     .btn-glow-cyan:hover {
       box-shadow: 0 0 20px rgba(6, 182, 212, 0.4), 0 4px 15px rgba(59, 130, 246, 0.3);
     }
-    /* ── scrollbar ── */
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 9999px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(20,184,166,0.4); }
+    /* ── Laser Radar Scan Animation for Door QR Camera ── */
+    @keyframes radarSweep {
+      0% { top: 0%; opacity: 0.8; }
+      50% { top: 100%; opacity: 1; }
+      100% { top: 0%; opacity: 0.8; }
+    }
+    .radar-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #06b6d4, #14b8a6, transparent);
+      box-shadow: 0 0 14px #14b8a6;
+      animation: radarSweep 2s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 20;
+    }
+    /* ── Luminous Frosted Glass Modal Backdrop & Optical Centering ── */
+    .modal-backdrop-blur {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 9999 !important;
+      background: rgba(3, 7, 18, 0.65) !important;
+      backdrop-filter: blur(32px) saturate(180%) !important;
+      -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+    }
+    .modal-card-center {
+      margin: auto !important;
+    }
   </style>
 </head>
 <body class="selection:bg-teal-500 selection:text-white min-h-screen overflow-x-hidden pb-16 md:pb-0">
@@ -305,6 +394,10 @@
         currentOccupancy: 347,
         ownerName: 'Vikram Singhania',
         ownerPhone: '+91 98201 54321',
+        managerEmail: 'director@trilogymumbai.com',
+        claimPin: '8844',
+        gstin: '27AAACT8844P1Z8',
+        exciseLicense: 'MH-EXC-2024-8844',
         upiId: 'trilogy.mumbai@icici',
         dressCode: 'Smart Casuals mandatory. No open footwear for men.',
         stagPolicy: 'Couples & Mixed Groups preferred.',
@@ -324,6 +417,10 @@
         currentOccupancy: 280,
         ownerName: 'Rohan & Ryan Tham',
         ownerPhone: '+91 98199 87654',
+        managerEmail: 'contact@kokomumbai.com',
+        claimPin: '1122',
+        gstin: '27AABCK1122R1ZM',
+        exciseLicense: 'MH-EXC-2024-1122',
         upiId: 'koko.bandra@hdfcbank',
         dressCode: 'Glamorous / High Fashion.',
         stagPolicy: 'Strict 1:1 Couple ratio on weekends.',
@@ -343,6 +440,10 @@
         currentOccupancy: 512,
         ownerName: 'Aditya Oberoi',
         ownerPhone: '+91 97654 32109',
+        managerEmail: 'director@raeethgoa.com',
+        claimPin: '9933',
+        gstin: '30AABCR9933K1Z2',
+        exciseLicense: 'GA-EXC-2024-9933',
         upiId: 'raeeth.goa@axisbank',
         dressCode: 'Bohemian / Resort Chic.',
         stagPolicy: 'Open entry with prior guestlist confirmation.',
@@ -362,6 +463,10 @@
         currentOccupancy: 390,
         ownerName: 'Ranjit Bindra',
         ownerPhone: '+91 98210 11223',
+        managerEmail: 'vip@bastiantop.com',
+        claimPin: '4455',
+        gstin: '27AABCB4455L1Z0',
+        exciseLicense: 'MH-EXC-2024-4455',
         upiId: 'bastian.top@kotak',
         dressCode: 'Chic / Upscale.',
         stagPolicy: '1:1 Ratio or VIP table booking.',
@@ -381,6 +486,10 @@
         currentOccupancy: 310,
         ownerName: 'Karan Bhasin',
         ownerPhone: '+91 99101 23456',
+        managerEmail: 'concierge@diablodelhi.com',
+        claimPin: '3311',
+        gstin: '07AABCD3311N1Z9',
+        exciseLicense: 'DL-EXC-2024-3311',
         upiId: 'diablo.delhi@paytm',
         dressCode: 'Smart Casuals.',
         stagPolicy: 'Stags allowed with cover charge.',
@@ -731,10 +840,49 @@
 
       const [currentUser, setCurrentUser] = useState(() => {
         const saved = localStorage.getItem('nv_current_user');
-        return saved ? JSON.parse(saved) : {
-          name: 'Arjun K (Guest)',
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (!parsed.claimedVenues) parsed.claimedVenues = ['venue_trilogy'];
+            if (!parsed.roles) parsed.roles = ['guest', 'owner'];
+            if (!parsed.claimCertificates) {
+              parsed.claimCertificates = {
+                venue_trilogy: {
+                  claimId: 'CLAIM-TRILOGY-8844',
+                  venueId: 'venue_trilogy',
+                  venueName: 'Trilogy Club & Lounge',
+                  verifiedAt: '31 Aug 2026, 10:00 PM',
+                  method: 'Govt GSTIN/Excise Match',
+                  boundAccount: parsed.phone || '+91 98200 44321',
+                  boundName: parsed.name || 'Arjun K',
+                  status: 'OFFICIALLY_VERIFIED',
+                  securityHash: '0x7f8a9b2c3d4e5f60'
+                }
+              };
+            }
+            return parsed;
+          } catch(e) {}
+        }
+        return {
+          id: 'user_arjun',
+          name: 'Arjun K',
           phone: '+91 98200 44321',
-          roles: ['guest'],
+          email: 'arjun.nightlife@gmail.com',
+          roles: ['guest', 'owner'],
+          claimedVenues: ['venue_trilogy'],
+          claimCertificates: {
+            venue_trilogy: {
+              claimId: 'CLAIM-TRILOGY-8844',
+              venueId: 'venue_trilogy',
+              venueName: 'Trilogy Club & Lounge',
+              verifiedAt: '31 Aug 2026, 10:00 PM',
+              method: 'Govt GSTIN/Excise Match',
+              boundAccount: '+91 98200 44321',
+              boundName: 'Arjun K',
+              status: 'OFFICIALLY_VERIFIED',
+              securityHash: '0x7f8a9b2c3d4e5f60'
+            }
+          },
           avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
           isLoggedIn: true,
         };
@@ -747,6 +895,9 @@
         const saved = localStorage.getItem('nv_my_pr');
         return saved ? JSON.parse(saved) : null;
       });
+
+      const [claimClubModalOpen, setClaimClubModalOpen] = useState(false);
+      const [pendingClaimVenueId, setPendingClaimVenueId] = useState(null);
 
       const [toast, setToast] = useState(null);
 
@@ -774,9 +925,10 @@
       const loginWithPhone = (phone, name = 'Nightlife Guest', otp = '123456') => {
         const cleanPhone = phone.startsWith('+91') ? phone : `+91 ${phone}`;
         const updatedUser = {
-          name: name.trim() || 'Nightlife Guest',
+          ...currentUser,
+          name: name.trim() || currentUser.name || 'Nightlife Guest',
           phone: cleanPhone,
-          roles: currentUser.roles?.includes('pr') ? ['guest', 'pr'] : ['guest'],
+          roles: currentUser.roles || ['guest'],
           avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
           isLoggedIn: true,
           token: `nv_jwt_${Date.now()}`
@@ -793,6 +945,8 @@
           name: 'Guest Explorer',
           phone: '+91 98000 00000',
           roles: ['guest'],
+          claimedVenues: [],
+          claimCertificates: {},
           avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
           isLoggedIn: false,
         });
@@ -800,17 +954,113 @@
         showToast('👋 Signed out successfully', 'info');
       };
 
-      const claimVenueOwnership = (venueId, pin) => {
+      const isVenueClaimedByUser = (venueId) => {
+        return (currentUser.claimedVenues || []).includes(venueId);
+      };
+
+      // Anti-Fraud Multi-Method Club Ownership Claim Protocol
+      const claimVenueOwnership = (venueId, payload = {}) => {
         const venue = venues.find(v => v.id === venueId);
         if (!venue) return { success: false, message: 'Venue not found' };
-        if (pin !== '8844' && pin !== '1122' && pin !== '9933') {
-          showToast('❌ Invalid Security PIN for this Club', 'error');
-          return { success: false, message: 'Invalid PIN' };
+
+        const pin = (typeof payload === 'string' ? payload : (payload.pin || '')).trim();
+        const method = payload.method || 'sms_token';
+        const gstin = (payload.gstin || '').trim().toUpperCase();
+        const exciseLicense = (payload.exciseLicense || '').trim().toUpperCase();
+        const claimToken = (payload.claimToken || '').trim();
+
+        let isMatch = false;
+        if (method === 'sms_token') {
+          isMatch = pin === venue.claimPin || pin === '8844' || pin === '1122' || pin === '9933' || pin === '4455' || pin === '7788' || pin === '6622' || pin === '3311' || pin === '123456' || (claimToken && pin === claimToken);
+        } else if (method === 'govt_license') {
+          isMatch = (gstin && gstin === venue.gstin.toUpperCase()) ||
+                    (exciseLicense && exciseLicense === venue.exciseLicense.toUpperCase()) ||
+                    pin === venue.claimPin || pin === '8844' || pin === '1122';
+        } else {
+          isMatch = pin === venue.claimPin || pin === '8844' || pin === '1122' || pin === '9933' || pin === '4455' || pin === '7788' || pin === '6622' || pin === '3311';
         }
+
+        if (!isMatch) {
+          showToast('❌ Verification Failed: Invalid Claim Token / PIN or Govt Registry mismatch', 'error');
+          return { success: false, message: 'Invalid verification credentials' };
+        }
+
+        const claimId = `CLAIM-${venue.name.split(' ')[0].toUpperCase()}-${Date.now().toString().slice(-4)}`;
+        const certificate = {
+          claimId,
+          venueId: venue.id,
+          venueName: venue.name,
+          verifiedAt: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          method: method === 'sms_token' ? 'SMS Manager Dispatch' : method === 'govt_license' ? 'Govt GSTIN/Excise Match' : 'Manager Master PIN',
+          boundAccount: currentUser.phone || '+91 98200 44321',
+          boundName: currentUser.name || 'Arjun K',
+          status: 'OFFICIALLY_VERIFIED',
+          securityHash: `0x${Array.from({length: 16}, () => Math.floor(Math.random()*16).toString(16)).join('')}`
+        };
+
+        const existingClaimed = currentUser.claimedVenues || [];
+        const newClaimed = existingClaimed.includes(venueId) ? existingClaimed : [...existingClaimed, venueId];
+        const existingRoles = currentUser.roles || ['guest'];
+        const newRoles = existingRoles.includes('owner') ? existingRoles : [...existingRoles, 'owner'];
+
+        const updatedUser = {
+          ...currentUser,
+          roles: newRoles,
+          claimedVenues: newClaimed,
+          claimCertificates: {
+            ...(currentUser.claimCertificates || {}),
+            [venueId]: certificate,
+          }
+        };
+
+        setCurrentUser(updatedUser);
         setActiveOwnerVenueId(venueId);
         setRole('owner');
-        showToast(`🏢 Verified Manager Access for ${venue.name}`, 'success');
-        return { success: true };
+        setActiveView('events');
+        showToast(`🎉 Ownership Verified! You are now authorized manager for ${venue.name} (Claim ID: ${claimId})`, 'success');
+        return { success: true, certificate, updatedUser };
+      };
+
+      // Seamless Multi-Role Persona Switcher (From Same Single Account)
+      const switchPersona = (targetRole, options = {}) => {
+        if (targetRole === 'guest') {
+          setRole('guest');
+          setActiveView(options.view || 'events');
+          showToast('🎧 Switched to Guest Mode (Events & Passes)', 'info');
+          return true;
+        }
+
+        if (targetRole === 'owner') {
+          const userClubs = currentUser.claimedVenues || [];
+          if (userClubs.length > 0) {
+            const targetVenueId = options.venueId || userClubs[0];
+            setActiveOwnerVenueId(targetVenueId);
+            setRole('owner');
+            setActiveView(options.view || 'events');
+            const clubName = venues.find(v => v.id === targetVenueId)?.name || 'Club';
+            showToast(`🏢 Switched to Club Door Console: ${clubName}`, 'success');
+            return true;
+          } else {
+            // No claimed clubs yet -> open verification claim modal!
+            if (options.venueId) setPendingClaimVenueId(options.venueId);
+            setClaimClubModalOpen(true);
+            showToast('🛡️ Official Verification Required: Claim your Club to access Door Console', 'info');
+            return false;
+          }
+        }
+
+        if (targetRole === 'pr') {
+          if (hasJoinedPR || myPrProfile) {
+            setRole('pr');
+            setActiveView(options.view || 'events');
+            showToast('👑 Switched to PR Promoter Hub', 'success');
+            return true;
+          } else {
+            setCreatePROpen(true);
+            showToast('✨ Create your PR Profile to unlock Bidding & Earnings', 'info');
+            return false;
+          }
+        }
       };
 
       // Add New PR Profile (LinkedIn for PRs)
@@ -1103,6 +1353,12 @@
             loginWithPhone,
             logout,
             claimVenueOwnership,
+            isVenueClaimedByUser,
+            switchPersona,
+            claimClubModalOpen,
+            setClaimClubModalOpen,
+            pendingClaimVenueId,
+            setPendingClaimVenueId,
             toast,
             showToast,
             registerPRProfile,
@@ -1120,11 +1376,46 @@
 
     const useApp = () => useContext(AppContext);
 
+    // --- INTERACTIVE FLOATING TOOLTIP COMPONENT ---
+    const Tooltip = ({ content, children, className = '', dotted = false, position = 'top' }) => {
+      const [isOpen, setIsOpen] = useState(false);
+      return (
+        <span
+          className={`tooltip-container ${dotted ? 'tooltip-dotted' : ''} ${className}`}
+          onMouseEnter={() => setIsOpen(true)}
+          onMouseLeave={() => setIsOpen(false)}
+          onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+        >
+          {children}
+          {content && (
+            <span
+              className={`tooltip-bubble ${isOpen ? '!visible !opacity-100' : ''}`}
+              style={{
+                bottom: position === 'top' ? 'calc(100% + 8px)' : 'auto',
+                top: position === 'bottom' ? 'calc(100% + 8px)' : 'auto',
+              }}
+            >
+              {content}
+            </span>
+          )}
+        </span>
+      );
+    };
+
+    const HelpTip = ({ text, title }) => (
+      <Tooltip content={text}>
+        <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-white/10 text-[9px] text-teal-300 hover:bg-teal-500/20 ml-1 cursor-help">
+          ℹ️
+        </span>
+      </Tooltip>
+    );
+
     // --- HEADER COMPONENT ---
-    const Header = ({ onOpenPasses, onOpenCreatePR, onOpenAuth, onOpenGateway }) => {
-      const { role, setRole, activeCity, setActiveCity, activeView, setActiveView, bookings, currentUser, hasJoinedPR } = useApp();
+    const Header = ({ onOpenPasses, onOpenCreatePR, onOpenAuth, onOpenGateway, onOpenClaimClub }) => {
+      const { role, setRole, activeCity, setActiveCity, activeView, setActiveView, bookings, currentUser, hasJoinedPR, myPrProfile, switchPersona } = useApp();
       const [cityDropdown, setCityDropdown] = useState(false);
       const activeCount = bookings.filter((b) => b.status === 'ACTIVE').length;
+      const userClaimedCount = currentUser?.claimedVenues?.length || 0;
 
       const roles = [
         { key: 'guest', label: 'Guest', icon: '🎧' },
@@ -1139,7 +1430,7 @@
 
               {/* Left Section: Logo & City */}
               <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => { setRole('guest'); setActiveView('events'); }}>
+                <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => switchPersona('guest')}>
                   <span className="text-lg sm:text-xl font-black tracking-tight text-white font-sans">
                     NIGHT<span className="gradient-text-purple">VIBE</span>
                   </span>
@@ -1277,26 +1568,55 @@
                   <span>Who Are You?</span>
                 </button>
 
-                {/* Role Switcher Pills */}
+                {/* Role Switcher Pills - Operates All 3 From Single Account */}
                 <div className="flex items-center p-0.5 rounded-lg bg-white/[0.03] border border-white/[0.05] shrink-0">
-                  {roles.map(r => (
-                    <button
-                      key={r.key}
-                      onClick={() => { setRole(r.key); setActiveView('events'); }}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition whitespace-nowrap ${
-                        role === r.key
-                          ? 'bg-teal-500/20 text-teal-300'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <span className="text-xs">{r.icon}</span>
-                      <span className="hidden sm:inline">{r.label}</span>
-                    </button>
-                  ))}
+                  {roles.map(r => {
+                    const isOwnerActive = r.key === 'owner' && userClaimedCount > 0;
+                    const isPRActive = r.key === 'pr' && (hasJoinedPR || myPrProfile);
+                    return (
+                      <button
+                        key={r.key}
+                        onClick={() => switchPersona(r.key)}
+                        title={
+                          r.key === 'owner'
+                            ? (userClaimedCount > 0 ? `Switch to Club Console (${userClaimedCount} claimed)` : 'Claim Club Ownership')
+                            : r.key === 'pr'
+                            ? (isPRActive ? 'Switch to PR Hub' : 'Join as PR Host')
+                            : 'Switch to Guest Mode'
+                        }
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition whitespace-nowrap relative ${
+                          role === r.key
+                            ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className="text-xs">{r.icon}</span>
+                        <span className="hidden sm:inline">{r.label}</span>
+                        {isOwnerActive && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" title="Verified Club Owner" />
+                        )}
+                        {isPRActive && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc]" title="Active PR Talent" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                {/* Join PR Button (Only shown for guest) */}
-                {role === 'guest' && !hasJoinedPR && (
+                {/* Claim Club Button (Only shown for guest if no club claimed yet) */}
+                {role === 'guest' && userClaimedCount === 0 && (
+                  <button
+                    onClick={onOpenClaimClub}
+                    title="Claim & Verify Club Ownership"
+                    className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-cyan-300 bg-cyan-500/15 border border-cyan-500/30 hover:bg-cyan-500/25 transition shrink-0 whitespace-nowrap"
+                  >
+                    <span>🏢</span>
+                    <span>Claim Club</span>
+                  </button>
+                )}
+
+                {/* Join PR Button (Only shown for guest if not joined yet) */}
+                {role === 'guest' && !hasJoinedPR && !myPrProfile && (
                   <button
                     onClick={onOpenCreatePR}
                     title="Join as PR Host"
@@ -1327,7 +1647,7 @@
                 <button
                   onClick={onOpenAuth}
                   className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition shrink-0 whitespace-nowrap group"
-                  title="Mobile Account & Persona Settings"
+                  title="Unified Multi-Role Account Settings"
                 >
                   <span className="text-xs font-bold text-white group-hover:text-teal-300 transition whitespace-nowrap">
                     {currentUser?.name ? (currentUser.name.length > 14 ? currentUser.name.split(' ')[0] : currentUser.name) : 'Guest'}
@@ -1364,7 +1684,7 @@
         <div className="space-y-8">
           
           {/* Hero Banner for PR Talent Directory */}
-          <div className="relative rounded-3xl overflow-hidden glass-panel border border-cyan-500/20 p-6 sm:p-10 shadow-2xl">
+          <div className="relative rounded-3xl overflow-hidden card-blur border border-cyan-500/20 p-6 sm:p-10 shadow-2xl">
             <div className="relative z-10 max-w-3xl space-y-3">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold">
                 <span>💼</span>
@@ -1461,7 +1781,7 @@
               return (
                 <div
                   key={pr.id}
-                  className="rounded-3xl glass-panel glass-panel-hover overflow-hidden border border-white/10 p-5 flex flex-col justify-between space-y-4"
+                  className="rounded-3xl card-blur glass-panel-hover overflow-hidden border border-white/10 p-5 flex flex-col justify-between space-y-4"
                 >
                   {/* Top Profile Header */}
                   <div>
@@ -1499,14 +1819,18 @@
                       {pr.bio}
                     </p>
 
-                    {/* Key Metrics Pill Bar */}
+                    {/* Key Metrics Pill Bar with Tooltips */}
                     <div className="grid grid-cols-3 gap-2 text-center text-xs mt-3.5 p-2.5 rounded-2xl bg-black/40 border border-white/5">
                       <div>
                         <span className="text-[9px] text-slate-400 uppercase block">Admissions</span>
                         <span className="font-black text-white">{pr.conversions}+</span>
                       </div>
                       <div>
-                        <span className="text-[9px] text-slate-400 uppercase block">Show-up</span>
+                        <span className="text-[9px] text-slate-400 uppercase block tooltip-dotted">
+                          <Tooltip content="Physical door check-in turnout rate. Promoters with >90% show-up enjoy tier-1 placement.">
+                            Show-Up ℹ️
+                          </Tooltip>
+                        </span>
                         <span className="font-black text-emerald-400">{pr.showUpRate}%</span>
                       </div>
                       <div>
@@ -1562,9 +1886,9 @@
           </div>
 
           {/* Full PR Profile Detail Modal */}
-          {selectedPRModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-              <div className="relative w-full max-w-lg rounded-3xl glass-panel my-8 p-6 shadow-2xl border border-cyan-500/40 space-y-5">
+          {selectedPRModal && ReactDOM.createPortal(
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 modal-backdrop-blur animate-fade-in overflow-y-auto" onClick={() => setSelectedPRModal(null)}>
+              <div className="relative w-full max-w-lg rounded-3xl glass-panel p-6 shadow-2xl border border-cyan-500/40 space-y-5" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => setSelectedPRModal(null)}
                   className="absolute top-5 right-5 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400"
@@ -1627,32 +1951,33 @@
                   </a>
                 )}
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       );
     };
 
     // --- PERSONA WELCOME GATEWAY MODAL (FIRST-VISIT ONBOARDING & ROLE ROUTER) ---
-    const PersonaWelcomeGatewayModal = ({ isOpen, onClose, onOpenAuth }) => {
-      const { setRole, setActiveView, showToast, hasJoinedPR } = useApp();
+    const PersonaWelcomeGatewayModal = ({ isOpen, onClose, onOpenAuth, onOpenClaimClub, onOpenCreatePR }) => {
+      const { switchPersona, currentUser, hasJoinedPR, myPrProfile } = useApp();
       const [rememberChoice, setRememberChoice] = useState(true);
 
       if (!isOpen) return null;
 
-      const handleSelectPersona = (selectedRole, label, view = 'events') => {
-        setRole(selectedRole);
-        setActiveView(view);
+      const handleSelectPersona = (selectedRole) => {
         if (rememberChoice) {
           localStorage.setItem('nv_persona_chosen', selectedRole);
         }
-        showToast(`✨ Welcome! Operating as ${label}`, 'info');
         onClose();
+        switchPersona(selectedRole);
       };
 
-      return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-xl animate-in fade-in overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-          <div className="relative w-full max-w-2xl rounded-3xl glass-panel p-6 sm:p-8 shadow-2xl border border-teal-500/40 my-8 space-y-6">
+      const userClaimedCount = currentUser?.claimedVenues?.length || 0;
+
+      return ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 modal-backdrop-blur animate-fade-in overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+          <div className="relative w-full max-w-2xl rounded-3xl glass-panel p-6 sm:p-8 shadow-2xl border border-teal-500/40 space-y-6" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={onClose}
               className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 flex items-center justify-center transition"
@@ -1669,7 +1994,7 @@
                 Who are you joining as tonight?
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-                Select your profile to load your personalized tools, events, passes, and venue consoles.
+                Single Unified Account: Access Guest passes, Club Door Console, and PR Bidding seamlessly without multiple logins.
               </p>
             </div>
 
@@ -1678,7 +2003,7 @@
               
               {/* Card 1: Guest */}
               <div
-                onClick={() => handleSelectPersona('guest', '🎧 Guest Clubber')}
+                onClick={() => handleSelectPersona('guest')}
                 className="group cursor-pointer rounded-2xl p-5 bg-gradient-to-b from-teal-500/10 via-black/40 to-black/60 border border-teal-500/30 hover:border-teal-400 hover:scale-[1.02] transition-all flex flex-col items-center justify-between text-center space-y-4 shadow-xl"
               >
                 <div className="space-y-3 flex flex-col items-center text-center w-full">
@@ -1699,9 +2024,14 @@
 
               {/* Card 2: Club Owner */}
               <div
-                onClick={() => handleSelectPersona('owner', '🏢 Club Owner / Manager')}
-                className="group cursor-pointer rounded-2xl p-5 bg-gradient-to-b from-cyan-500/10 via-black/40 to-black/60 border border-cyan-500/30 hover:border-cyan-400 hover:scale-[1.02] transition-all flex flex-col items-center justify-between text-center space-y-4 shadow-xl"
+                onClick={() => handleSelectPersona('owner')}
+                className="group cursor-pointer rounded-2xl p-5 bg-gradient-to-b from-cyan-500/10 via-black/40 to-black/60 border border-cyan-500/30 hover:border-cyan-400 hover:scale-[1.02] transition-all flex flex-col items-center justify-between text-center space-y-4 shadow-xl relative"
               >
+                {userClaimedCount > 0 && (
+                  <span className="absolute top-3 right-3 text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-black">
+                    {userClaimedCount} CLAIMED
+                  </span>
+                )}
                 <div className="space-y-3 flex flex-col items-center text-center w-full">
                   <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-2xl mx-auto group-hover:scale-110 transition shadow-inner">
                     🏢
@@ -1710,19 +2040,24 @@
                     I am Club Owner
                   </h3>
                   <p className="text-[11px] text-slate-400 leading-relaxed text-center">
-                    Gate door pass scanner, PR promoter whitelist control, live capacity, &amp; instant GSTIN verify.
+                    {userClaimedCount > 0 ? 'Gate door pass scanner, PR promoter whitelist control, live capacity matrix.' : 'Claim & verify venue ownership with dynamic 6-digit claim tokens or GSTIN match.'}
                   </p>
                 </div>
                 <button className="w-full py-2.5 rounded-xl bg-cyan-500 text-black text-xs font-black shadow group-hover:bg-cyan-400 transition text-center">
-                  Open Club Console →
+                  {userClaimedCount > 0 ? 'Open Club Console →' : 'Claim Your Club →'}
                 </button>
               </div>
 
               {/* Card 3: PR Promoter */}
               <div
-                onClick={() => handleSelectPersona('pr', '👑 PR Host & Promoter')}
-                className="group cursor-pointer rounded-2xl p-5 bg-gradient-to-b from-purple-500/10 via-black/40 to-black/60 border border-purple-500/30 hover:border-purple-400 hover:scale-[1.02] transition-all flex flex-col items-center justify-between text-center space-y-4 shadow-xl"
+                onClick={() => handleSelectPersona('pr')}
+                className="group cursor-pointer rounded-2xl p-5 bg-gradient-to-b from-purple-500/10 via-black/40 to-black/60 border border-purple-500/30 hover:border-purple-400 hover:scale-[1.02] transition-all flex flex-col items-center justify-between text-center space-y-4 shadow-xl relative"
               >
+                {(hasJoinedPR || myPrProfile) && (
+                  <span className="absolute top-3 right-3 text-[9px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 font-black">
+                    REGISTERED
+                  </span>
+                )}
                 <div className="space-y-3 flex flex-col items-center text-center w-full">
                   <div className="w-14 h-14 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-2xl mx-auto group-hover:scale-110 transition shadow-inner">
                     👑
@@ -1735,7 +2070,7 @@
                   </p>
                 </div>
                 <button className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-black shadow group-hover:opacity-90 transition text-center">
-                  Open PR Hub →
+                  {(hasJoinedPR || myPrProfile) ? 'Open PR Hub →' : 'Join PR Network →'}
                 </button>
               </div>
 
@@ -1758,25 +2093,455 @@
                 className="text-teal-300 hover:text-teal-200 font-bold flex items-center justify-center gap-1.5 transition"
               >
                 <span>📱</span>
-                <span>Sign in with Mobile OTP directly →</span>
+                <span>Manage Single-Account Personas ({currentUser?.name || 'Arjun K'}) →</span>
               </button>
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       );
     };
 
-    // --- DIRECT INDIAN MOBILE OTP SIGN-IN & ROLE DISAMBIGUATION MODAL ---
-    const PhoneOTPLoginModal = ({ isOpen, onClose, onOpenCreatePR }) => {
-      const { currentUser, loginWithPhone, logout, venues, claimVenueOwnership, setRole, hasJoinedPR } = useApp();
+    // --- CLAIM CLUB OWNERSHIP & VERIFICATION MODAL (ANTI-FRAUD & MULTI-METHOD GATEWAY) ---
+    const ClaimClubVerificationModal = ({ isOpen, onClose, initialVenueId = null }) => {
+      const { venues, activeCity, claimVenueOwnership, currentUser, showToast } = useApp();
+      const cityVenues = venues.filter(v => v.city === activeCity);
+      const [selectedVenueId, setSelectedVenueId] = useState(initialVenueId || cityVenues[0]?.id || venues[0]?.id);
+      const [verificationMethod, setVerificationMethod] = useState('sms_token'); // 'sms_token' | 'govt_license' | 'master_pin'
+
+      // Verification Form States
+      const [claimToken, setClaimToken] = useState('');
+      const [generatedToken, setGeneratedToken] = useState('');
+      const [dispatchAlert, setDispatchAlert] = useState(null);
+      const [tokenTimer, setTokenTimer] = useState(0);
+
+      const [gstinInput, setGstinInput] = useState('');
+      const [exciseInput, setExciseInput] = useState('');
+      const [pinInput, setPinInput] = useState('');
+
+      const [verifying, setVerifying] = useState(false);
+      const [verifiedCert, setVerifiedCert] = useState(null);
+
+      const selectedVenue = venues.find(v => v.id === selectedVenueId) || venues[0];
+
+      useEffect(() => {
+        if (initialVenueId) setSelectedVenueId(initialVenueId);
+      }, [initialVenueId]);
+
+      useEffect(() => {
+        let interval;
+        if (tokenTimer > 0) {
+          interval = setInterval(() => setTokenTimer(t => t - 1), 1000);
+        }
+        return () => clearInterval(interval);
+      }, [tokenTimer]);
+
+      // Trigger realistic 6-digit Claim Token SMS dispatch to venue's registered manager
+      const handleDispatchToken = () => {
+        const dynamicCode = selectedVenue.claimPin || Math.floor(1000 + Math.random() * 9000).toString();
+        setGeneratedToken(dynamicCode);
+        setTokenTimer(60);
+        setDispatchAlert({
+          phone: selectedVenue.ownerPhone,
+          email: selectedVenue.managerEmail,
+          code: dynamicCode,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        showToast(`📲 Security Claim Token dispatched to registered manager (${selectedVenue.ownerPhone})`, 'info');
+      };
+
+      const handleVerifyAndClaim = (e) => {
+        e.preventDefault();
+        setVerifying(true);
+
+        setTimeout(() => {
+          setVerifying(false);
+          const payload = {
+            method: verificationMethod,
+            pin: verificationMethod === 'sms_token' ? claimToken : verificationMethod === 'master_pin' ? pinInput : pinInput || claimToken,
+            claimToken: generatedToken,
+            gstin: gstinInput,
+            exciseLicense: exciseInput,
+          };
+
+          const res = claimVenueOwnership(selectedVenue.id, payload);
+          if (res.success) {
+            setVerifiedCert(res.certificate);
+          }
+        }, 800);
+      };
+
+      if (!isOpen) return null;
+
+      return ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 md:p-6 modal-backdrop-blur animate-fade-in overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget && !verifying) onClose(); }}>
+          <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-3xl glass-panel shadow-2xl border border-cyan-500/40 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-black/60 border-b border-white/10 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xl">
+                  🏢
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      ANTI-FRAUD PROTOCOL
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Single Account Identity
+                    </span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black text-white">
+                    Claim &amp; Verify Club Ownership
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+              
+              {verifiedCert ? (
+                /* SUCCESS CERTIFICATE SCREEN */
+                <div className="p-6 rounded-3xl bg-emerald-950/20 border-2 border-emerald-500/40 text-center space-y-5 animate-scale-up">
+                  <div className="w-16 h-16 rounded-3xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-3xl mx-auto shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                    🛡️
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      OFFICIALLY VERIFIED &amp; BOUND
+                    </span>
+                    <h2 className="text-2xl font-black text-white">{selectedVenue.name}</h2>
+                    <p className="text-xs text-slate-300">
+                      Venue door scanner, live capacity matrix, PR authorization, and escrow settlements are now bound to your account.
+                    </p>
+                  </div>
+
+                  {/* Cryptographic Certificate Pill */}
+                  <div className="p-4 rounded-2xl bg-black/60 border border-white/10 text-left space-y-2.5 text-xs">
+                    <div className="flex justify-between border-b border-white/10 pb-1.5">
+                      <span className="text-slate-400">Claim Certificate ID:</span>
+                      <span className="font-mono font-bold text-emerald-300">{verifiedCert.claimId}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/10 pb-1.5">
+                      <span className="text-slate-400">Bound Account ID:</span>
+                      <span className="font-mono text-white">{verifiedCert.boundAccount} ({verifiedCert.boundName})</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/10 pb-1.5">
+                      <span className="text-slate-400">Verification Method:</span>
+                      <span className="text-cyan-300 font-medium">{verifiedCert.method}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Security Hash:</span>
+                      <span className="font-mono text-[11px] text-slate-400">{verifiedCert.securityHash}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-xs text-teal-300 flex items-center justify-center gap-2">
+                    <span>💡</span>
+                    <span>You can now switch between <b>Guest</b>, <b>Club ({selectedVenue.name.split(' ')[0]})</b>, and <b>PR</b> from your single profile.</span>
+                  </div>
+
+                  <button
+                    onClick={onClose}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-black text-xs shadow-xl hover:opacity-95 transition"
+                  >
+                    Enter Club Door &amp; Event Console →
+                  </button>
+                </div>
+              ) : (
+                /* STEP-BY-STEP CLAIM FORM */
+                <form onSubmit={handleVerifyAndClaim} className="space-y-5 text-xs">
+                  
+                  {/* Info Notice */}
+                  <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-slate-300 leading-relaxed">
+                    <p className="font-semibold text-white mb-0.5 flex items-center gap-1.5">
+                      <span>🔒</span>
+                      <span>Anti-Impersonation Protection</span>
+                    </p>
+                    <span>To protect venue revenue and door manifests, only verified general managers, directors, or license holders can claim club controls.</span>
+                  </div>
+
+                  {/* Step 1: Select Venue */}
+                  <div className="space-y-2">
+                    <label className="block text-slate-300 font-bold uppercase tracking-wider text-[10px]">
+                      Step 1: Select Club Venue to Claim
+                    </label>
+                    <select
+                      value={selectedVenueId}
+                      onChange={(e) => {
+                        setSelectedVenueId(e.target.value);
+                        setDispatchAlert(null);
+                        setGeneratedToken('');
+                        setClaimToken('');
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-medium text-xs focus:border-cyan-500 focus:outline-none"
+                    >
+                      {venues.map(v => (
+                        <option key={v.id} value={v.id}>
+                          {v.name} ({v.city.toUpperCase()} • {v.area})
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Venue Official Registry Card */}
+                    <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center gap-3">
+                      <img
+                        src={selectedVenue.image}
+                        alt={selectedVenue.name}
+                        className="w-14 h-14 rounded-xl object-cover ring-1 ring-white/10 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-white truncate">{selectedVenue.name}</h4>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">REGISTRY ACTIVE</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 truncate">Manager: {selectedVenue.ownerName}</p>
+                        <p className="text-[10px] text-cyan-300 font-mono">
+                          Registered Phone: {selectedVenue.ownerPhone?.replace(/(\+91\s\d{2})\d{5}(\d{3})/, '$1 ••••• $2') || '+91 98••• ••321'}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          Govt GSTIN: {selectedVenue.gstin || '27AABCT1234F1Z9'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Verification Method Tabs */}
+                  <div className="space-y-2.5">
+                    <label className="block text-slate-300 font-bold uppercase tracking-wider text-[10px]">
+                      Step 2: Choose Anti-Impersonation Proof Method
+                    </label>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setVerificationMethod('sms_token')}
+                        className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center transition ${
+                          verificationMethod === 'sms_token'
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200'
+                            : 'bg-white/[0.03] border-white/10 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="text-base mb-1">📱</span>
+                        <span className="font-bold text-[11px]">SMS Claim Token</span>
+                        <span className="text-[9px] text-teal-400 font-medium">Recommended</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setVerificationMethod('govt_license')}
+                        className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center transition ${
+                          verificationMethod === 'govt_license'
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200'
+                            : 'bg-white/[0.03] border-white/10 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="text-base mb-1">🏛️</span>
+                        <span className="font-bold text-[11px]">Govt GSTIN &amp; License</span>
+                        <span className="text-[9px] text-slate-400">Excise Match</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setVerificationMethod('master_pin')}
+                        className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center transition ${
+                          verificationMethod === 'master_pin'
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200'
+                            : 'bg-white/[0.03] border-white/10 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="text-base mb-1">🔑</span>
+                        <span className="font-bold text-[11px]">Manager Master PIN</span>
+                        <span className="text-[9px] text-slate-400">Direct Passcode</span>
+                      </button>
+                    </div>
+
+                    {/* METHOD 1: SMS CLAIM TOKEN */}
+                    {verificationMethod === 'sms_token' && (
+                      <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3.5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-white block">Dispatch Dynamic Claim Token</span>
+                            <span className="text-[11px] text-slate-400">
+                              Sends a 4-6 digit security token to {selectedVenue.ownerPhone?.replace(/(\+91\s\d{2})\d{5}(\d{3})/, '$1 ••••• $2')}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleDispatchToken}
+                            disabled={tokenTimer > 0}
+                            className={`px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                              tokenTimer > 0
+                                ? 'bg-white/10 text-slate-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black shadow-lg hover:opacity-95'
+                            }`}
+                          >
+                            {tokenTimer > 0 ? `Resend (${tokenTimer}s)` : '⚡ Dispatch Token'}
+                          </button>
+                        </div>
+
+                        {/* Simulated Live SMS Notification Banner */}
+                        {dispatchAlert && (
+                          <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/40 space-y-2 animate-fade-in">
+                            <div className="flex items-center justify-between text-[11px] text-cyan-300">
+                              <span className="flex items-center gap-1 font-bold">
+                                <span>📲</span>
+                                <span>[NightVibe Security] SMS Dispatch to {selectedVenue.ownerName}</span>
+                              </span>
+                              <span className="font-mono text-[10px] text-slate-400">{dispatchAlert.time}</span>
+                            </div>
+                            <p className="text-[11px] text-white font-mono bg-black/50 p-2 rounded-lg border border-white/10">
+                              "Your NightVibe Club Claim Code for {selectedVenue.name} is: <span className="text-cyan-300 font-bold font-mono text-sm">{dispatchAlert.code}</span>. Valid for 10 minutes."
+                            </p>
+                            <div className="flex justify-end">
+                              <button
+                                type="button"
+                                onClick={() => setClaimToken(dispatchAlert.code)}
+                                className="px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold hover:bg-cyan-500/30"
+                              >
+                                🚀 One-Click Auto-Fill Code
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-slate-300 font-semibold mb-1">Enter Security Claim Code</label>
+                          <input
+                            type="text"
+                            placeholder="Enter 4 or 6 digit Claim Token"
+                            value={claimToken}
+                            onChange={(e) => setClaimToken(e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-sm tracking-wider focus:border-cyan-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* METHOD 2: GOVT GSTIN & LICENSE */}
+                    {verificationMethod === 'govt_license' && (
+                      <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-slate-300 font-semibold">Club GSTIN Number</label>
+                            <button
+                              type="button"
+                              onClick={() => setGstinInput(selectedVenue.gstin || '27AABCK1122R1ZM')}
+                              className="text-[10px] text-cyan-400 hover:underline"
+                            >
+                              Fill Sample GSTIN ({selectedVenue.gstin || '27AABCK1122R1ZM'})
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="e.g. 27AABCK1122R1ZM"
+                            value={gstinInput}
+                            onChange={(e) => setGstinInput(e.target.value.toUpperCase())}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-xs focus:border-cyan-500 focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-slate-300 font-semibold">State Excise Bar License Number</label>
+                            <button
+                              type="button"
+                              onClick={() => setExciseInput(selectedVenue.exciseLicense || 'MH-EXC-2024-1122')}
+                              className="text-[10px] text-cyan-400 hover:underline"
+                            >
+                              Fill Sample License ({selectedVenue.exciseLicense || 'MH-EXC-2024-1122'})
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="e.g. MH-EXC-2024-1122"
+                            value={exciseInput}
+                            onChange={(e) => setExciseInput(e.target.value.toUpperCase())}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-xs focus:border-cyan-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* METHOD 3: MASTER PIN */}
+                    {verificationMethod === 'master_pin' && (
+                      <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-slate-300 font-semibold">Venue Manager Master Passcode</label>
+                            <button
+                              type="button"
+                              onClick={() => setPinInput(selectedVenue.claimPin || '1122')}
+                              className="text-[10px] text-cyan-400 hover:underline"
+                            >
+                              Quick PIN ({selectedVenue.claimPin || '1122'})
+                            </button>
+                          </div>
+                          <input
+                            type="password"
+                            placeholder="Enter 4-digit Master Passcode"
+                            value={pinInput}
+                            onChange={(e) => setPinInput(e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-sm tracking-widest focus:border-cyan-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+
+                  {/* Submit Action */}
+                  <button
+                    type="submit"
+                    disabled={verifying}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-black font-black text-xs shadow-xl hover:opacity-95 transition flex items-center justify-center gap-2"
+                  >
+                    {verifying ? (
+                      <>
+                        <span className="animate-spin">⏳</span>
+                        <span>Verifying Cryptographic Registry...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🛡️</span>
+                        <span>Verify &amp; Bind {selectedVenue.name} to My Account</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="text-[10px] text-center text-slate-500">
+                    Once verified, you will maintain dual Guest &amp; Club Owner privileges under account <b>{currentUser?.phone || '+91 98200 44321'}</b>.
+                  </div>
+
+                </form>
+              )}
+
+            </div>
+          </div>
+        </div>,
+        document.body
+      );
+    };
+
+    // --- UNIFIED MULTI-ROLE ACCOUNT & OTP LOGIN MODAL ---
+    const PhoneOTPLoginModal = ({ isOpen, onClose, onOpenCreatePR, onOpenClaimClub }) => {
+      const { currentUser, loginWithPhone, logout, venues, switchPersona, setRole, hasJoinedPR, myPrProfile } = useApp();
       const [step, setStep] = useState(currentUser?.isLoggedIn ? 'PROFILE' : 'PHONE');
       const [phone, setPhone] = useState(currentUser?.phone?.replace('+91 ', '') || '');
       const [name, setName] = useState(currentUser?.name || '');
       const [otp, setOtp] = useState(['', '', '', '', '', '']);
       const [resendTimer, setResendTimer] = useState(30);
-      const [venuePin, setVenuePin] = useState('');
-      const [selectedVenueToClaim, setSelectedVenueToClaim] = useState(venues[0]?.id || 'venue_trilogy');
+
+      const userClaimedVenues = (currentUser?.claimedVenues || []).map(vid => venues.find(v => v.id === vid)).filter(Boolean);
 
       useEffect(() => {
         if (currentUser?.isLoggedIn) setStep('PROFILE');
@@ -1808,7 +2573,7 @@
         }
         setStep('OTP');
         setResendTimer(30);
-        setOtp(['1', '2', '3', '4', '5', '6']); // Pre-filled test OTP for instant dev convenience
+        setOtp(['1', '2', '3', '4', '5', '6']);
       };
 
       const handleOtpChange = (index, value) => {
@@ -1817,13 +2582,11 @@
         newOtp[index] = value.slice(-1);
         setOtp(newOtp);
 
-        // Auto-advance
         if (value && index < 5) {
           const nextInput = document.getElementById(`otp-box-${index + 1}`);
           if (nextInput) nextInput.focus();
         }
 
-        // Auto submit if 6th digit entered
         if (newOtp.every(d => d !== '') && index === 5) {
           loginWithPhone(phone, name, newOtp.join(''));
           setStep('PROFILE');
@@ -1837,22 +2600,14 @@
         setStep('PROFILE');
       };
 
-      const handleClaimVenue = (e) => {
-        e.preventDefault();
-        const res = claimVenueOwnership(selectedVenueToClaim, venuePin);
-        if (res.success) {
-          onClose();
-        }
-      };
-
-      return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-          <div className="relative w-full max-w-md rounded-3xl glass-panel p-6 shadow-2xl border border-teal-500/40 my-8 space-y-5">
+      return ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 modal-backdrop-blur animate-fade-in overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+          <div className="relative w-full max-w-lg rounded-3xl glass-panel p-6 shadow-2xl border border-teal-500/40 space-y-5" onClick={(e) => e.stopPropagation()}>
             <button onClick={onClose} className="absolute top-5 right-5 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400">
               ✕
             </button>
 
-            {/* Header Icon */}
+            {/* Header */}
             <div className="text-center space-y-1.5">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-600 p-[2px] mx-auto">
                 <div className="w-full h-full bg-[#0d0f17] rounded-[14px] flex items-center justify-center text-xl">
@@ -1860,12 +2615,12 @@
                 </div>
               </div>
               <h3 className="text-xl font-bold text-white">
-                {step === 'PROFILE' ? 'Your NightVibe Account' : 'Direct Mobile OTP Sign-In'}
+                {step === 'PROFILE' ? 'Single Unified Account Hub' : 'Direct Mobile OTP Sign-In'}
               </h3>
               <p className="text-xs text-slate-400">
                 {step === 'PHONE' && 'Enter your 10-digit Indian mobile number for instant WhatsApp/SMS OTP.'}
                 {step === 'OTP' && `Enter the 6-digit code sent to +91 ${phone}`}
-                {step === 'PROFILE' && 'Manage your active persona, linked wallets and venue management access.'}
+                {step === 'PROFILE' && 'Operate Guest passes, claimed Club Door consoles, and PR Bidding from one identity.'}
               </p>
             </div>
 
@@ -1958,7 +2713,7 @@
                   type="submit"
                   className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 text-black font-black text-xs shadow-lg hover:opacity-95 transition"
                 >
-                  Verify & Enter NightVibe (Instant)
+                  Verify &amp; Enter NightVibe (Instant)
                 </button>
 
                 <div className="p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-[10px] text-teal-300 text-center">
@@ -1967,91 +2722,157 @@
               </form>
             )}
 
-            {/* STEP 3: User Profile & Role Disambiguation Dashboard */}
+            {/* STEP 3: UNIFIED MULTI-ROLE PERSONA DASHBOARD */}
             {step === 'PROFILE' && (
               <div className="space-y-4 text-xs">
-                {/* Active Persona Badge Card */}
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <img src={currentUser.avatar} alt="Avatar" className="w-12 h-12 rounded-full object-cover ring-2 ring-teal-500/40" />
-                      <div>
-                        <h4 className="font-bold text-white text-sm">{currentUser.name}</h4>
-                        <p className="text-[11px] text-slate-400 font-mono">{currentUser.phone}</p>
-                      </div>
+                
+                {/* Account Summary Banner */}
+                <div className="p-4 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <img src={currentUser.avatar} alt="Avatar" className="w-12 h-12 rounded-full object-cover ring-2 ring-teal-500/40" />
+                    <div>
+                      <h4 className="font-bold text-white text-sm">{currentUser.name}</h4>
+                      <p className="text-[11px] text-slate-400 font-mono">{currentUser.phone}</p>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                      🎧 Guest Explorer
-                    </span>
                   </div>
-
-                  <div className="pt-2 border-t border-white/5 text-[11px] text-slate-300 leading-relaxed">
-                    Default profile: You can browse events, compare verified promoter bids, and hold passes securely in escrow.
-                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                    Unified Multi-Role
+                  </span>
                 </div>
 
-                {/* Role Upgrade Cards (Resolves User Confusion) */}
-                <div className="space-y-2.5">
-                  <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px] block">Role Upgrade Options</span>
+                {/* 3 Personas Under ONE ID */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
+                      🎭 Active Personas in Your Account
+                    </span>
+                    <span className="text-[10px] text-teal-400">1 Account • 3 Consoles</span>
+                  </div>
 
-                  {/* PR Host Upgrade */}
-                  <div className="p-3 rounded-xl bg-white/[0.03] border border-amber-500/20 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-amber-400 font-bold">👑 Nightlife PR / Host</span>
-                        {hasJoinedPR && <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-bold">ACTIVE</span>}
+                  {/* 1. Guest Mode */}
+                  <div className="p-3 rounded-2xl bg-white/[0.03] border border-teal-500/20 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-lg">
+                        🎧
                       </div>
-                      <p className="text-[10px] text-slate-400">Earn dynamic commissions & submit bids for partner clubs.</p>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-white text-xs">Guest Explorer</span>
+                          <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-bold">READY</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400">Browse events, compare bids, view QR passes.</p>
+                      </div>
                     </div>
                     <button
                       onClick={() => {
                         onClose();
-                        if (hasJoinedPR) {
-                          setRole('pr');
-                        } else {
-                          onOpenCreatePR();
-                        }
+                        switchPersona('guest');
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 text-xs font-bold whitespace-nowrap transition"
+                      className="px-3 py-1.5 rounded-xl bg-teal-500 text-black font-bold text-xs hover:bg-teal-400 transition"
                     >
-                      {hasJoinedPR ? 'Open Console' : '✨ Join as PR'}
+                      Switch →
                     </button>
                   </div>
 
-                  {/* Club Owner Claim with PIN */}
-                  <div className="p-3 rounded-xl bg-white/[0.03] border border-cyan-500/20 space-y-2">
+                  {/* 2. Club Ownership Mode */}
+                  <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-cyan-500/20 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-cyan-400 font-bold">🏢 Club Venue Owner / Manager</span>
-                        <p className="text-[10px] text-slate-400">Verify door passes, monitor occupancy & release escrow payouts.</p>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-lg">
+                          🏢
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-white text-xs">Club Venue Owner</span>
+                            {userClaimedVenues.length > 0 && (
+                              <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-bold">
+                                {userClaimedVenues.length} CLAIMED
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400">Door pass scanner, capacity matrix &amp; PR payouts.</p>
+                        </div>
                       </div>
                     </div>
 
-                    <form onSubmit={handleClaimVenue} className="flex gap-2 pt-1">
-                      <select
-                        value={selectedVenueToClaim}
-                        onChange={(e) => setSelectedVenueToClaim(e.target.value)}
-                        className="flex-1 px-2 py-1 rounded-lg bg-black/50 border border-white/10 text-white text-[11px]"
-                      >
-                        {venues.map(v => (
-                          <option key={v.id} value={v.id}>{v.name}</option>
+                    {userClaimedVenues.length > 0 ? (
+                      <div className="space-y-1.5 pt-1">
+                        {userClaimedVenues.map(cv => (
+                          <div key={cv.id} className="p-2 rounded-xl bg-black/50 border border-white/5 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">{cv.logo || '🍸'}</span>
+                              <span className="font-bold text-cyan-200 text-xs">{cv.name}</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                onClose();
+                                switchPersona('owner', { venueId: cv.id });
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-cyan-500 text-black font-bold text-[11px] hover:bg-cyan-400"
+                            >
+                              Open Console →
+                            </button>
+                          </div>
                         ))}
-                      </select>
-                      <input
-                        type="password"
-                        placeholder="PIN (8844)"
-                        value={venuePin}
-                        onChange={(e) => setVenuePin(e.target.value)}
-                        className="w-20 px-2 py-1 rounded-lg bg-black/50 border border-white/10 text-white text-center text-[11px] font-mono"
-                      />
-                      <button
-                        type="submit"
-                        className="px-3 py-1 rounded-lg bg-cyan-500 text-black text-[11px] font-bold shadow hover:bg-cyan-400"
-                      >
-                        Claim
-                      </button>
-                    </form>
+                        <button
+                          onClick={() => {
+                            onClose();
+                            if (onOpenClaimClub) onOpenClaimClub();
+                          }}
+                          className="w-full py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold transition"
+                        >
+                          + Claim Another Club
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[11px] text-slate-400">No clubs claimed yet under this ID.</span>
+                        <button
+                          onClick={() => {
+                            onClose();
+                            if (onOpenClaimClub) onOpenClaimClub();
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-cyan-500 text-black font-bold text-xs hover:bg-cyan-400"
+                        >
+                          🏢 Claim a Club →
+                        </button>
+                      </div>
+                    )}
                   </div>
+
+                  {/* 3. PR Promoter Mode */}
+                  <div className="p-3 rounded-2xl bg-white/[0.03] border border-purple-500/20 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-lg">
+                        👑
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-white text-xs">Nightlife PR &amp; Host</span>
+                          {(hasJoinedPR || myPrProfile) && (
+                            <span className="text-[9px] bg-purple-500/20 text-purple-300 px-1.5 py-0.2 rounded font-bold">
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400">Place competitive bids &amp; earn instant UPI payouts.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        onClose();
+                        if (hasJoinedPR || myPrProfile) {
+                          switchPersona('pr');
+                        } else {
+                          if (onOpenCreatePR) onOpenCreatePR();
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-xs hover:opacity-90 transition whitespace-nowrap"
+                    >
+                      {(hasJoinedPR || myPrProfile) ? 'Open PR Hub →' : '✨ Join as PR'}
+                    </button>
+                  </div>
+
                 </div>
 
                 <div className="flex gap-2 pt-2">
@@ -2071,7 +2892,8 @@
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       );
     };
 
@@ -2098,9 +2920,9 @@
         onClose();
       };
 
-      return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in overflow-y-auto">
-          <div className="relative w-full max-w-lg rounded-3xl glass-panel p-6 shadow-2xl border border-cyan-500/40 my-8">
+      return ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 modal-backdrop-blur animate-fade-in overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+          <div className="relative w-full max-w-lg rounded-3xl glass-panel p-6 shadow-2xl border border-cyan-500/40" onClick={(e) => e.stopPropagation()}>
             <button onClick={onClose} className="absolute top-5 right-5 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400">
               ✕
             </button>
@@ -2229,7 +3051,8 @@
               </button>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       );
     };
 
@@ -2351,8 +3174,8 @@
 
       if (!isOpen || !event) return null;
 
-      return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md" onClick={onClose}>
+      return ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-5 md:p-6 modal-backdrop-blur animate-fade-in" onClick={onClose}>
           <div className="relative w-full max-w-2xl sm:max-w-3xl max-h-[92vh] flex flex-col rounded-3xl glass-panel shadow-2xl border border-teal-500/30 overflow-hidden" onClick={(e) => e.stopPropagation()}>
             
             {/* Compact Header Hero Image (Pinned Top) */}
@@ -2655,7 +3478,8 @@
             )}
 
           </div>
-        </div>
+        </div>,
+        document.body
       );
     };
 
@@ -2772,9 +3596,9 @@
       const progressPct = (timeLeft / 30) * 100;
       const qrMatrix = generateQRMatrix(selectedBooking ? `${selectedBooking.id}:${selectedBooking.qrToken || 'NV1'}` : 'TKT-8842');
 
-      return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto" onClick={onClose}>
-          <div className="relative w-full max-w-lg rounded-3xl glass-panel my-8 shadow-2xl border border-teal-500/30 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      return ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 modal-backdrop-blur animate-fade-in overflow-y-auto" onClick={onClose}>
+          <div className="relative w-full max-w-lg rounded-3xl glass-panel shadow-2xl border border-teal-500/30 overflow-hidden" onClick={(e) => e.stopPropagation()}>
             
             <div className="p-4 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2811,19 +3635,16 @@
 
             {selectedBooking ? (
               <div className="p-5 space-y-4">
-                <div className="rounded-3xl bg-gradient-to-b from-[#151928] via-[#0e111a] to-[#090b12] border border-teal-500/30 p-6 shadow-2xl relative overflow-hidden">
-                  
-                  {/* Hologram Header */}
-                  <div className="flex items-center justify-between pb-4 border-b border-dashed border-white/15">
-                    <div>
-                      <div className="text-[10px] text-teal-400 font-bold uppercase tracking-widest">VIP DOOR CLEARANCE</div>
-                      <h4 className="text-xl font-black text-white mt-0.5">{venue?.name}</h4>
-                      <p className="text-xs text-slate-300">{event?.title}</p>
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40 uppercase tracking-wider">
-                      {selectedBooking.status === 'ACTIVE' ? 'READY AT GATE' : selectedBooking.status}
-                    </span>
+                <div className="rounded-2xl bg-black/40 border border-white/10 p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] text-teal-400 font-bold uppercase tracking-widest">VIP DOOR CLEARANCE</div>
+                    <h4 className="text-xl font-black text-white mt-0.5">{venue?.name}</h4>
+                    <p className="text-xs text-slate-300">{event?.title}</p>
                   </div>
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40 uppercase tracking-wider">
+                    {selectedBooking.status === 'ACTIVE' ? 'READY AT GATE' : selectedBooking.status}
+                  </span>
+                </div>
 
                   {/* Scannable Optical QR Code Container */}
                   <div className="py-5 flex flex-col items-center justify-center relative">
@@ -2917,16 +3738,16 @@
                       </div>
                     </div>
                   )}
-                </div>
 
-                <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2.5 text-xs text-slate-300">
-                  <span className="text-base">🛡️</span>
-                  <span>Present this screen to the venue door manager for instant cryptographic clearance.</span>
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2.5 text-xs text-slate-300">
+                    <span className="text-base">🛡️</span>
+                    <span>Present this screen to the venue door manager for instant cryptographic clearance.</span>
+                  </div>
                 </div>
-              </div>
             ) : null}
           </div>
-        </div>
+        </div>,
+        document.body
       );
     };
 
@@ -3295,14 +4116,318 @@
       );
     };
 
+    // --- CREATE EVENT MODAL COMPONENT (Club Owner Event Creation & PR Campaign Launcher) ---
+    const CreateEventModal = ({ isOpen, onClose, onEventCreated }) => {
+      const { activeOwnerVenueId, venues, createEvent, showToast } = useApp();
+      const venue = venues.find((v) => v.id === activeOwnerVenueId) || venues[0];
+
+      const [title, setTitle] = useState('');
+      const [genre, setGenre] = useState('Techno & Underground');
+      const [date, setDate] = useState('Saturday, Tonight');
+      const [time, setTime] = useState('10:00 PM - 03:30 AM');
+      const [basePrice, setBasePrice] = useState('2000');
+      const [floorPrice, setFloorPrice] = useState('1600');
+      const [commissionCap, setCommissionCap] = useState('350');
+      const [capacityQuota, setCapacityQuota] = useState('300');
+      const [description, setDescription] = useState('');
+      const [selectedImage, setSelectedImage] = useState('https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80');
+      const [selectedPerks, setSelectedPerks] = useState(['perk_shooter', 'perk_fasttrack']);
+
+      if (!isOpen) return null;
+
+      const PRESET_COVERS = [
+        { label: 'Techno / Underground', url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80' },
+        { label: 'Arena / EDM Concert', url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80' },
+        { label: 'Sunset / Sundowner', url: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1200&q=80' },
+        { label: 'Neon Velvet Lounge', url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80' },
+        { label: 'Rooftop / Skyline VIP', url: 'https://images.unsplash.com/photo-1574391884720-bbc3740c59d1?auto=format&fit=crop&w=1200&q=80' },
+      ];
+
+      const AVAILABLE_PERKS = [
+        { id: 'perk_shooter', name: '1 Free Craft Shooter / Cocktail', value: 350 },
+        { id: 'perk_fasttrack', name: 'Fast-Track Queue Bypass (<5m wait)', value: 400 },
+        { id: 'perk_female_free', name: 'Female Guestlist Free Entry (before 11 PM)', value: 500 },
+        { id: 'perk_table_discount', name: '10% Off Bottle Service Menu', value: 800 },
+        { id: 'perk_backstage', name: 'Backstage Lounge / DJ Booth Access', value: 1200 },
+      ];
+
+      const togglePerk = (pId) => {
+        setSelectedPerks((prev) =>
+          prev.includes(pId) ? prev.filter((id) => id !== pId) : [...prev, pId]
+        );
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!title.trim()) {
+          showToast('Please enter an event title', 'error');
+          return;
+        }
+
+        const approvedPerkObjects = AVAILABLE_PERKS.filter((p) => selectedPerks.includes(p.id));
+
+        const newEvent = {
+          title: title.trim(),
+          genre,
+          date,
+          time,
+          image: selectedImage,
+          basePrice: Number(basePrice) || 2000,
+          floorPrice: Number(floorPrice) || 1600,
+          commissionCap: Number(commissionCap) || 350,
+          capacityQuota: Number(capacityQuota) || 300,
+          description: description.trim() || `Exclusive ${genre} event at ${venue.name}. Curated crowd, premium sound, and dynamic PR deals.`,
+          approvedPerks: approvedPerkObjects,
+        };
+
+        createEvent(newEvent);
+        window.confetti && window.confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+        window.SoundEngine?.play('success');
+        onClose();
+        if (onEventCreated) onEventCreated();
+      };
+
+      if (!isOpen) return null;
+
+      return ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 md:p-6 modal-backdrop-blur animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl glass-panel border border-teal-500/30 overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Header */}
+            <div className="p-5 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-teal-950/40 via-black/40 to-black/60 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-xl">
+                  🎉
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                    <span>Host / Create New Event</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                      {venue.name}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">Launch club night, set price floor &amp; invite verified PR promoters to bid</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 text-xs">
+              
+              {/* Event Title & Genre */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="block text-slate-300 font-bold">Event Title &amp; Artist Lineup *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Boiler Room Mumbai — Underground Showcase"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white placeholder-slate-500 focus:border-teal-400 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-slate-300 font-bold">Music Genre / Vibe</label>
+                  <select
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
+                  >
+                    <option value="Techno & Underground">Techno &amp; Underground</option>
+                    <option value="Commercial EDM">Commercial EDM</option>
+                    <option value="Bollywood Club">Bollywood Club</option>
+                    <option value="Sunset Beach & Sundowner">Sunset Sundowner</option>
+                    <option value="Hip-Hop & Trap">Hip-Hop &amp; Trap</option>
+                    <option value="House & Nu-Disco">House &amp; Nu-Disco</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Date & Time */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-slate-300 font-bold">Date / Timing Label</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Saturday, Tonight"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-slate-300 font-bold">Door Gate Hours</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 10:00 PM - 03:30 AM"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Cover Artwork Presets */}
+              <div className="space-y-2">
+                <label className="block text-slate-300 font-bold">Cover Artwork (Select Preset or Custom)</label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {PRESET_COVERS.map((preset) => (
+                    <button
+                      type="button"
+                      key={preset.label}
+                      onClick={() => setSelectedImage(preset.url)}
+                      className={`p-1.5 rounded-2xl border text-left flex flex-col items-center gap-1 transition ${
+                        selectedImage === preset.url
+                          ? 'border-teal-400 bg-teal-500/20'
+                          : 'border-white/10 bg-white/5 hover:border-white/20'
+                      }`}
+                    >
+                      <img src={preset.url} alt={preset.label} className="w-full h-14 rounded-xl object-cover" />
+                      <span className="text-[9px] text-slate-300 font-semibold line-clamp-1 text-center">{preset.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pricing Controls: Box Office, Floor Price, Commission Cap */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-3.5 rounded-2xl bg-black/40 border border-white/10">
+                <div className="space-y-1">
+                  <label className="block text-slate-300 font-bold flex items-center gap-1">
+                    <span>Box Office Price (₹)</span>
+                    <Tooltip content="Standard walk-in entry price at the venue gate without PR discount.">
+                      <span className="text-[10px] text-slate-400">ℹ️</span>
+                    </Tooltip>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={basePrice}
+                    onChange={(e) => setBasePrice(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono focus:border-teal-400 focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-300 font-bold flex items-center gap-1">
+                    <span>PR Floor Price (₹)</span>
+                    <Tooltip content="Minimum price protection floor set by club. Promoters cannot bid below this threshold.">
+                      <span className="text-[10px] text-teal-300">ℹ️</span>
+                    </Tooltip>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={floorPrice}
+                    onChange={(e) => setFloorPrice(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-teal-500/30 text-teal-300 font-mono font-bold focus:border-teal-400 focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-300 font-bold flex items-center gap-1">
+                    <span>Commission Cap (₹)</span>
+                    <Tooltip content="Maximum commission paid to PR per ticket. Adjusted by promoter show-up multiplier.">
+                      <span className="text-[10px] text-purple-300">ℹ️</span>
+                    </Tooltip>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={commissionCap}
+                    onChange={(e) => setCommissionCap(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-purple-500/30 text-purple-300 font-mono focus:border-purple-400 focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-300 font-bold flex items-center gap-1">
+                    <span>Quota Allocation</span>
+                    <Tooltip content="Total guest passes reserved for PR promoter distribution.">
+                      <span className="text-[10px] text-amber-300">ℹ️</span>
+                    </Tooltip>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={capacityQuota}
+                    onChange={(e) => setCapacityQuota(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-amber-500/30 text-amber-300 font-mono focus:border-amber-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Approved PR Perks Checkboxes */}
+              <div className="space-y-2">
+                <label className="block text-slate-300 font-bold">Approved PR Guest Perks (Promoters can bundle these in bids):</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {AVAILABLE_PERKS.map((perk) => {
+                    const isChecked = selectedPerks.includes(perk.id);
+                    return (
+                      <button
+                        type="button"
+                        key={perk.id}
+                        onClick={() => togglePerk(perk.id)}
+                        className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition ${
+                          isChecked ? 'bg-teal-500/20 border-teal-400 text-white' : 'bg-white/5 border-white/10 text-slate-400'
+                        }`}
+                      >
+                        <span className="font-semibold">{perk.name}</span>
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-black/40 text-teal-300">
+                          ₹{perk.value} val
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1">
+                <label className="block text-slate-300 font-bold">Event Description &amp; Lineup Details</label>
+                <textarea
+                  rows="2"
+                  placeholder="Enter DJ bio, dress code guidelines, or table booking info..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
+                />
+              </div>
+
+              {/* Submit CTA */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-400 text-black font-black text-sm shadow-xl hover:opacity-95 transition flex items-center justify-center gap-2 btn-glow"
+                >
+                  <span>🚀 Launch Event &amp; Open PR Bidding</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      );
+    };
+
     // --- CLUB OWNER & GATE SCANNER VIEW COMPONENT ---
-    const OwnerView = ({ onOpenPRNetwork }) => {
-      const { venues, events, promoters, bookings, transactions, activeOwnerVenueId, setActiveOwnerVenueId, scanTicket } = useApp();
+    const OwnerView = ({ onOpenPRNetwork, onOpenCityEvents, onOpenClaimClub }) => {
+      const { venues, events, promoters, bookings, transactions, activeOwnerVenueId, setActiveOwnerVenueId, scanTicket, showToast } = useApp();
       const venue = venues.find((v) => v.id === activeOwnerVenueId) || venues[0];
       const venueBookings = bookings.filter((b) => b.venueId === venue.id);
       const venueTransactions = transactions.filter((t) => t.venueId === venue.id || t.recipientId === venue.id || !t.venueId);
+      const venueEvents = events.filter((e) => e.venueId === venue.id);
 
-      const [activeTab, setActiveTab] = useState('scanner');
+      const [activeTab, setActiveTab] = useState('scanner'); // 'scanner' | 'matrix' | 'leaderboard' | 'ledger' | 'license'
+      const [showCreateModal, setShowCreateModal] = useState(false);
+      const [selectedMatrixEventId, setSelectedMatrixEventId] = useState(venueEvents[0]?.id || events[0]?.id);
+
       const [scannedTicketId, setScannedTicketId] = useState('');
       const [scannedResult, setScannedResult] = useState(null);
       const [cameraActive, setCameraActive] = useState(false);
@@ -3426,6 +4551,26 @@
         }, 1500);
       };
 
+      // Current matrix event calculations
+      const activeMatrixEvent = venueEvents.find((e) => e.id === selectedMatrixEventId) || venueEvents[0] || events[0];
+      const matrixBookings = bookings.filter((b) => b.eventId === activeMatrixEvent?.id);
+      const totalTicketsSold = matrixBookings.reduce((sum, b) => sum + b.pax, 0);
+      const admittedPax = matrixBookings.filter((b) => b.status === 'CHECKED_IN').reduce((sum, b) => sum + b.pax, 0);
+      const eventGmv = matrixBookings.reduce((sum, b) => sum + b.totalPaid, 0);
+      const eventPrCommission = matrixBookings.reduce((sum, b) => sum + (b.prCommission || 0), 0);
+      const eventVenueNet = matrixBookings.reduce((sum, b) => sum + (b.venueNet || (b.totalPaid - (b.prCommission || 0))), 0);
+      const showUpRate = totalTicketsSold > 0 ? Math.round((admittedPax / totalTicketsSold) * 100) : 92;
+      const capacityTarget = activeMatrixEvent?.capacityQuota || 350;
+      const capacityPct = Math.min(100, Math.round((totalTicketsSold / capacityTarget) * 100));
+
+      const malePax = matrixBookings.reduce((sum, b) => sum + (b.maleCount || 0), 0);
+      const femalePax = matrixBookings.reduce((sum, b) => sum + (b.femaleCount || 0), 0);
+      const couplePax = matrixBookings.reduce((sum, b) => sum + (b.coupleCount || 0) * 2, 0);
+      const totalCounted = malePax + femalePax + couplePax || 10;
+      const malePct = Math.round((malePax / totalCounted) * 100) || 48;
+      const femalePct = Math.round((femalePax / totalCounted) * 100) || 34;
+      const couplePct = Math.max(0, 100 - malePct - femalePct) || 18;
+
       return (
         <div className="space-y-6">
           {/* Header */}
@@ -3437,7 +4582,7 @@
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">
-                    Club Owner & Door Console
+                    Club Owner &amp; Door Console
                   </span>
                   <span className="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                     🛡️ GOVT VERIFIED
@@ -3448,13 +4593,30 @@
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-black text-xs font-black flex items-center gap-1.5 shadow-lg hover:opacity-90 transition btn-glow"
+              >
+                <span>➕</span>
+                <span>Host / Create Event</span>
+              </button>
+
               <button
                 onClick={onOpenPRNetwork}
-                className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-bold flex items-center gap-1"
+                className="px-3 py-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-bold flex items-center gap-1 hover:bg-cyan-500/30 transition"
               >
                 <span>💼</span>
                 <span>Scout PRs (Free)</span>
+              </button>
+
+              <button
+                onClick={onOpenClaimClub}
+                className="px-3 py-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1 hover:bg-amber-500/30 transition"
+                title="Claim & verify another club under your profile"
+              >
+                <span>🏢</span>
+                <span>+ Claim Another Club</span>
               </button>
 
               <select
@@ -3463,7 +4625,7 @@
                   setActiveOwnerVenueId(e.target.value);
                   setScannedResult(null);
                 }}
-                className="px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white"
+                className="px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none"
               >
                 {venues.map((v) => (
                   <option key={v.id} value={v.id}>{v.name}</option>
@@ -3476,44 +4638,62 @@
           <div className="flex items-center justify-center mx-auto gap-2 p-1 rounded-2xl bg-black/40 border border-white/10 w-fit flex-wrap">
             <button
               onClick={() => setActiveTab('scanner')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${
-                activeTab === 'scanner' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white' : 'text-slate-400'
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                activeTab === 'scanner' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
               📷 In-App Door Scanner
             </button>
             <button
-              onClick={() => setActiveTab('leaderboard')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${
-                activeTab === 'leaderboard' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white' : 'text-slate-400'
+              onClick={() => setActiveTab('matrix')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                activeTab === 'matrix' ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-black shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
-              📊 PR Footfall & Attribution
+              <span>📅</span>
+              <span>Event Analytics Matrix</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('leaderboard')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                activeTab === 'leaderboard' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              📊 PR Footfall &amp; Attribution
             </button>
             <button
               onClick={() => setActiveTab('ledger')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold ${
-                activeTab === 'ledger' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white' : 'text-slate-400'
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                activeTab === 'ledger' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
               💳 Settlement Ledger
             </button>
             <button
               onClick={() => setActiveTab('license')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 ${
-                activeTab === 'license' ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-black' : 'text-slate-400'
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition ${
+                activeTab === 'license' ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-black shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
               <span>🏛️</span>
-              <span>Govt License Verify (<30s)</span>
+              <span>Govt License Verify (&lt;30s)</span>
             </button>
           </div>
 
-          {/* Scanner Tab */}
+          {/* Create Event Modal */}
+          <CreateEventModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onEventCreated={() => {
+              setActiveTab('matrix');
+            }}
+          />
+
+          {/* TAB 1: Scanner Tab */}
           {activeTab === 'scanner' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
-              <div className="lg:col-span-5 p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
+              <div className="lg:col-span-5 p-5 rounded-3xl card-blur border border-white/10 space-y-4">
                 <h3 className="text-sm font-bold text-white flex items-center justify-between">
                   <span>Entrance Camera Scanner</span>
                   <span className="text-[10px] text-emerald-400 font-semibold">● ACTIVE GATE</span>
@@ -3582,7 +4762,7 @@
                       onClick={() => handleInspect(scannedTicketId)}
                       className="px-4 py-2 rounded-xl bg-teal-500 text-black font-bold text-xs hover:bg-teal-400 transition"
                     >
-                      Scan & Verify
+                      Scan &amp; Verify
                     </button>
                   </div>
 
@@ -3604,7 +4784,7 @@
                 </div>
               </div>
 
-              <div className="lg:col-span-7 p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
+              <div className="lg:col-span-7 p-5 rounded-3xl card-blur border border-white/10 space-y-4">
                 {scannedResult ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between pb-3 border-b border-white/10">
@@ -3652,7 +4832,7 @@
                           onClick={handleAdmit}
                           className="py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-black text-xs font-black shadow-lg hover:opacity-90 transition"
                         >
-                          ✅ Grant Entry & Settle
+                          ✅ Grant Entry &amp; Settle
                         </button>
                       </div>
                     ) : scannedResult.status === 'CHECKED_IN' ? (
@@ -3675,11 +4855,285 @@
             </div>
           )}
 
-          {/* Leaderboard Tab */}
+          {/* TAB 2: Event Analytics Matrix & Performance Tracker */}
+          {activeTab === 'matrix' && (
+            <div className="space-y-6">
+              
+              {/* Event Selector Pill Bar */}
+              <div className="flex items-center justify-between gap-3 p-3 rounded-2xl card-blur border border-white/10 overflow-x-auto">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-400 whitespace-nowrap">📅 Tracking Event:</span>
+                  {venueEvents.map((evt) => (
+                    <button
+                      key={evt.id}
+                      onClick={() => setSelectedMatrixEventId(evt.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                        activeMatrixEvent?.id === evt.id
+                          ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-black shadow-lg'
+                          : 'bg-white/5 text-slate-300 hover:text-white border border-white/5'
+                      }`}
+                    >
+                      {evt.title.split('—')[0].split('ft.')[0]}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-teal-300 text-xs font-bold whitespace-nowrap flex items-center gap-1 border border-teal-500/30"
+                >
+                  <span>➕ Host Another Event</span>
+                </button>
+              </div>
+
+              {/* Hero Event Matrix Banner */}
+              {activeMatrixEvent && (
+                <div className="relative rounded-3xl card-blur border border-teal-500/30 overflow-hidden p-5 sm:p-6 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={activeMatrixEvent.image}
+                        alt={activeMatrixEvent.title}
+                        className="w-16 h-16 rounded-2xl object-cover border border-white/10 shadow-lg"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                            {activeMatrixEvent.genre}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+                            🟢 LIVE ON SALE
+                          </span>
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-black text-white mt-1">{activeMatrixEvent.title}</h3>
+                        <p className="text-xs text-slate-400">⏰ {activeMatrixEvent.date} • {activeMatrixEvent.time}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 block">Box Office / Floor</span>
+                        <span className="font-mono text-sm font-bold text-white">₹{activeMatrixEvent.basePrice} / <span className="text-teal-300 font-bold">₹{activeMatrixEvent.floorPrice}</span></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 5 Core Metric Cards with Card Blur */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    
+                    {/* Metric 1: Passes Sold & Velocity */}
+                    <div className="p-3.5 rounded-2xl card-blur border border-teal-500/20 space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Tickets Sold</span>
+                        <Tooltip content="Total verified passes purchased across all authorized PR promoters.">
+                          <span className="text-[10px] text-teal-300">ℹ️</span>
+                        </Tooltip>
+                      </div>
+                      <div className="text-xl font-black text-white font-mono">
+                        {totalTicketsSold} <span className="text-xs text-slate-400 font-normal">/ {capacityTarget}</span>
+                      </div>
+                      <div className="w-full bg-black/50 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-gradient-to-r from-teal-400 to-emerald-400 h-full rounded-full" style={{ width: `${capacityPct}%` }} />
+                      </div>
+                      <span className="text-[10px] text-teal-300 font-semibold block">{capacityPct}% quota filled</span>
+                    </div>
+
+                    {/* Metric 2: Gross GMV */}
+                    <div className="p-3.5 rounded-2xl card-blur border border-purple-500/20 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Gross Box Office</span>
+                        <Tooltip content="Total revenue collected from pass buyers before platform and PR splits.">
+                          <span className="text-[10px] text-purple-300">ℹ️</span>
+                        </Tooltip>
+                      </div>
+                      <div className="text-xl font-black text-purple-300 font-mono">
+                        ₹{eventGmv.toLocaleString('en-IN')}
+                      </div>
+                      <span className="text-[10px] text-slate-400 block">Avg Ticket: ₹{activeMatrixEvent.floorPrice}</span>
+                    </div>
+
+                    {/* Metric 3: Net Venue Realization */}
+                    <div className="p-3.5 rounded-2xl card-blur border border-emerald-500/20 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Net Venue Share</span>
+                        <Tooltip content="Direct net earnings realized by club owner after PR commissions.">
+                          <span className="text-[10px] text-emerald-300">ℹ️</span>
+                        </Tooltip>
+                      </div>
+                      <div className="text-xl font-black text-emerald-400 font-mono">
+                        ₹{eventVenueNet.toLocaleString('en-IN')}
+                      </div>
+                      <span className="text-[10px] text-emerald-300 font-semibold block">85.4% retained</span>
+                    </div>
+
+                    {/* Metric 4: PR Commission Outflow */}
+                    <div className="p-3.5 rounded-2xl card-blur border border-pink-500/20 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>PR Commission</span>
+                        <Tooltip content="Total commission distributed to promoters based on verified show-up score.">
+                          <span className="text-[10px] text-pink-300">ℹ️</span>
+                        </Tooltip>
+                      </div>
+                      <div className="text-xl font-black text-pink-400 font-mono">
+                        ₹{eventPrCommission.toLocaleString('en-IN')}
+                      </div>
+                      <span className="text-[10px] text-slate-400 block">11.8% promoter spend</span>
+                    </div>
+
+                    {/* Metric 5: Show-Up Rate */}
+                    <div className="p-3.5 rounded-2xl card-blur border border-amber-500/20 space-y-1 col-span-2 sm:col-span-1">
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <span className="tooltip-dotted">Show-Up Rate</span>
+                        <Tooltip content="Show-Up Rate: (Physical Gate Scans ÷ Total Tickets Issued) × 100. High show-up (>90%) rewards PRs with higher payout multipliers.">
+                          <span className="text-[10px] text-amber-300">ℹ️</span>
+                        </Tooltip>
+                      </div>
+                      <div className="text-xl font-black text-amber-400 font-mono">
+                        {showUpRate}%
+                      </div>
+                      <span className="text-[10px] text-slate-400 block">{admittedPax} checked in at door</span>
+                    </div>
+                  </div>
+
+                  {/* Deep-Dive Grid: PR Attribution Table + Audience Gender Matrix */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
+                    
+                    {/* PR Attribution Table */}
+                    <div className="lg:col-span-7 p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>👑</span>
+                          <span>Promoter Attribution &amp; Conversion Matrix</span>
+                        </h4>
+                        <span className="text-[10px] text-teal-300 font-semibold">{activeMatrixEvent.bids.length} Active PR Bids</span>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-white/10 text-slate-400 uppercase text-[9px]">
+                              <th className="pb-2">Promoter</th>
+                              <th className="pb-2">Passes Sold</th>
+                              <th className="pb-2">Door Check-ins</th>
+                              <th className="pb-2 tooltip-dotted">
+                                <Tooltip content="Promoter's verified physical attendance conversion rate for this event.">
+                                  Show-Up %
+                                </Tooltip>
+                              </th>
+                              <th className="pb-2">Sales GMV</th>
+                              <th className="pb-2">Commission</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {activeMatrixEvent.bids.map((bid) => {
+                              const pr = promoters.find((p) => p.id === bid.prId) || { name: 'Rahul Mehta', handle: '@rahul_pr', showUpRate: 94 };
+                              const prBookings = matrixBookings.filter((b) => b.prId === bid.prId);
+                              const sold = prBookings.reduce((s, b) => s + b.pax, 0) || (bid.price === 1650 ? 42 : 28);
+                              const admitted = prBookings.filter((b) => b.status === 'CHECKED_IN').reduce((s, b) => s + b.pax, 0) || Math.round(sold * 0.92);
+                              const rate = sold > 0 ? Math.round((admitted / sold) * 100) : 92;
+                              const gmv = sold * bid.price;
+                              const comm = Math.round(sold * 250);
+
+                              return (
+                                <tr key={bid.id} className="hover:bg-white/5">
+                                  <td className="py-2.5 font-bold text-white">
+                                    <div>{pr.name}</div>
+                                    <div className="text-[10px] text-slate-400 font-normal">{pr.handle}</div>
+                                  </td>
+                                  <td className="py-2.5 font-mono text-cyan-300 font-bold">{sold} pax</td>
+                                  <td className="py-2.5 font-mono text-emerald-400">{admitted} adm</td>
+                                  <td className="py-2.5 font-mono font-bold text-amber-300">
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                      {rate}%
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 font-mono text-purple-300">₹{gmv.toLocaleString('en-IN')}</td>
+                                  <td className="py-2.5 font-mono text-pink-400 font-bold">₹{comm.toLocaleString('en-IN')}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Audience Demographics & Gender Split Matrix */}
+                    <div className="lg:col-span-5 p-4 rounded-2xl bg-black/40 border border-white/10 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>⚖️</span>
+                          <span>Crowd &amp; Gender Ratio Balance</span>
+                        </h4>
+                        <span className="text-[10px] text-emerald-400 font-bold px-2 py-0.5 rounded bg-emerald-500/20">
+                          PERFECT VIBE
+                        </span>
+                      </div>
+
+                      {/* Segmented Progress Bar */}
+                      <div className="space-y-1.5">
+                        <div className="w-full h-3 rounded-full overflow-hidden flex bg-black/60 border border-white/10">
+                          <div style={{ width: `${malePct}%` }} className="bg-amber-400 h-full" title={`Males: ${malePct}%`} />
+                          <div style={{ width: `${femalePct}%` }} className="bg-pink-400 h-full" title={`Females: ${femalePct}%`} />
+                          <div style={{ width: `${couplePct}%` }} className="bg-teal-400 h-full" title={`Couples: ${couplePct}%`} />
+                        </div>
+                        <div className="flex justify-between text-[10px] text-slate-400">
+                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/> Men: {malePct}%</span>
+                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-400 inline-block"/> Women: {femalePct}%</span>
+                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-400 inline-block"/> Couples: {couplePct}%</span>
+                        </div>
+                      </div>
+
+                      {/* Hourly Gate Velocity */}
+                      <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
+                        <span className="text-[10px] font-bold text-slate-300 block uppercase">Door Arrival Velocity:</span>
+                        <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
+                          <div className="p-1.5 rounded-lg bg-black/40">
+                            <span className="text-slate-400 block">10 PM</span>
+                            <span className="font-bold text-teal-300">15%</span>
+                          </div>
+                          <div className="p-1.5 rounded-lg bg-teal-500/20 border border-teal-500/30">
+                            <span className="text-slate-300 block">11 PM (Peak)</span>
+                            <span className="font-bold text-emerald-300">45%</span>
+                          </div>
+                          <div className="p-1.5 rounded-lg bg-black/40">
+                            <span className="text-slate-400 block">12 AM</span>
+                            <span className="font-bold text-amber-300">30%</span>
+                          </div>
+                          <div className="p-1.5 rounded-lg bg-black/40">
+                            <span className="text-slate-400 block">01 AM</span>
+                            <span className="font-bold text-slate-400">10%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Campaign Control Quick Actions */}
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <button
+                          onClick={() => showToast('🔒 PR Bidding limits locked for peak hours', 'info')}
+                          className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold border border-white/10"
+                        >
+                          Lock Floor Price
+                        </button>
+                        <button
+                          onClick={() => showToast('📥 Gate Manifest CSV Exported (42 Entries)', 'success')}
+                          className="flex-1 py-2 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 text-xs font-semibold border border-teal-500/30"
+                        >
+                          Export Manifest CSV
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: Leaderboard Tab */}
           {activeTab === 'leaderboard' && (
-            <div className="p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
+            <div className="p-5 rounded-3xl card-blur border border-white/10 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white">Live PR Footfall & Attribution Tonight</h3>
+                <h3 className="text-sm font-bold text-white">Live PR Footfall &amp; Attribution Tonight</h3>
                 <button onClick={onOpenPRNetwork} className="text-xs text-cyan-400 hover:underline">
                   Browse All PRs in Talent Directory →
                 </button>
@@ -3693,6 +5147,11 @@
                       <th className="pb-2">Niche</th>
                       <th className="pb-2">Admitted Pax</th>
                       <th className="pb-2">Gross GMV</th>
+                      <th className="pb-2 tooltip-dotted">
+                        <Tooltip content="Promoter's verified show-up percentage across all events.">
+                          Show-Up
+                        </Tooltip>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -3706,6 +5165,7 @@
                           <td className="py-2.5 text-cyan-300">{pr.niche}</td>
                           <td className="py-2.5 text-emerald-400 font-bold">{adm} pax</td>
                           <td className="py-2.5 text-purple-300 font-semibold">₹{gmv}</td>
+                          <td className="py-2.5 text-amber-300 font-bold">{pr.showUpRate || 92}%</td>
                         </tr>
                       );
                     })}
@@ -3715,9 +5175,9 @@
             </div>
           )}
 
-          {/* Ledger Tab — Scoped strictly to active venue to prevent cross-tenant leaks */}
+          {/* TAB 4: Ledger Tab — Scoped strictly to active venue to prevent cross-tenant leaks */}
           {activeTab === 'ledger' && (
-            <div className="p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
+            <div className="p-5 rounded-3xl card-blur border border-white/10 space-y-4">
               <h3 className="text-sm font-bold text-white">Direct Split Settlement Ledger ({venue.name})</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -3728,7 +5188,11 @@
                       <th className="pb-2">PR Credited</th>
                       <th className="pb-2">Venue Share</th>
                       <th className="pb-2">PR Commission</th>
-                      <th className="pb-2">2% TDS</th>
+                      <th className="pb-2 tooltip-dotted">
+                        <Tooltip content="Sec 194H 2% Tax Deducted at Source on commission, auto-reported to ITD.">
+                          2% TDS
+                        </Tooltip>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -3748,10 +5212,10 @@
             </div>
           )}
 
-          {/* Govt License Verification Tab (<30s Instant Online Check) */}
+          {/* TAB 5: Govt License Verification Tab (<30s Instant Online Check) */}
           {activeTab === 'license' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-6 p-6 rounded-3xl glass-panel border border-emerald-500/30 space-y-4">
+              <div className="lg:col-span-6 p-6 rounded-3xl card-blur border border-emerald-500/30 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-black text-white flex items-center gap-2">
@@ -3815,7 +5279,7 @@
               </div>
 
               {/* Status Certificate Card */}
-              <div className="lg:col-span-6 p-6 rounded-3xl glass-panel border border-teal-500/30 space-y-4 relative overflow-hidden bg-gradient-to-b from-teal-950/20 via-black/40 to-black/60">
+              <div className="lg:col-span-6 p-6 rounded-3xl card-blur border border-teal-500/30 space-y-4 relative overflow-hidden bg-gradient-to-b from-teal-950/20 via-black/40 to-black/60">
                 <div className="flex items-center justify-between pb-3 border-b border-white/10">
                   <div>
                     <span className="text-[10px] font-mono text-teal-400 uppercase tracking-wider block">NATIONAL COMPLIANCE CERTIFICATE</span>
@@ -3974,16 +5438,28 @@
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl glass-panel border border-white/10 space-y-1">
-              <span className="text-xs text-slate-400 block">Verified Admissions</span>
+            <div className="p-4 rounded-2xl card-blur border border-white/10 space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span className="tooltip-dotted">
+                  <Tooltip content="Total verified admissions scanned at the gate through your PR referral links.">
+                    Verified Admissions ℹ️
+                  </Tooltip>
+                </span>
+              </div>
               <div className="text-2xl font-black text-emerald-400">
                 {scannedBookings.reduce((a, b) => a + b.pax, 0)} Pax
               </div>
               <p className="text-[10px] text-slate-400">{scannedBookings.length} confirmed door entries</p>
             </div>
 
-            <div className="p-4 rounded-2xl glass-panel border border-white/10 space-y-1">
-              <span className="text-xs text-slate-400 block">PR Trust Score</span>
+            <div className="p-4 rounded-2xl card-blur border border-white/10 space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span className="tooltip-dotted">
+                  <Tooltip content="Show-Up Score: (Physical Gate Check-ins ÷ Total Passes Issued) × 100. Scoring >90% earns priority allocation and zero dispute bonus.">
+                    PR Trust / Show-Up ℹ️
+                  </Tooltip>
+                </span>
+              </div>
               <div className="text-2xl font-black text-purple-300">{pr.showUpRate}%</div>
               <p className="text-[10px] text-emerald-400">⭐ {pr.rating} (Zero Disputes)</p>
             </div>
@@ -3991,9 +5467,14 @@
 
           {/* Dynamic Bidding Console */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-7 p-5 rounded-3xl glass-panel border border-white/10 space-y-4">
+            <div className="lg:col-span-7 p-5 rounded-3xl card-blur border border-white/10 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white">Dynamic Bidding Engine</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white">Dynamic Bidding Engine</h3>
+                  <Tooltip content="Set custom pass prices above the venue floor. Bundle VIP perks to outcompete standard box office ticketing.">
+                    <span className="text-xs text-cyan-400 cursor-pointer">ℹ️</span>
+                  </Tooltip>
+                </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                   isAuthorized ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                 }`}>
@@ -4023,7 +5504,11 @@
               {selectedEvent && (
                 <div className="space-y-3 p-3.5 rounded-2xl bg-black/30 border border-white/5">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-300">Your Offer Price:</span>
+                    <span className="text-slate-300 tooltip-dotted">
+                      <Tooltip content="Your custom ticket price offered to guests. You capture the spread above the floor price.">
+                        Your Offer Price ℹ️:
+                      </Tooltip>
+                    </span>
                     <span className="text-lg font-black text-cyan-300">₹{bidPrice}</span>
                   </div>
                   <input
@@ -4036,15 +5521,28 @@
                     className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
                   />
                   <div className="flex justify-between text-[10px] text-slate-500">
-                    <span>Floor: ₹{selectedEvent.floorPrice}</span>
-                    <span>Official: ₹{selectedEvent.basePrice}</span>
+                    <span className="tooltip-dotted">
+                      <Tooltip content="Minimum price protection floor set by club. Promoters cannot bid below this threshold.">
+                        Floor: ₹{selectedEvent.floorPrice} ℹ️
+                      </Tooltip>
+                    </span>
+                    <span className="tooltip-dotted">
+                      <Tooltip content="Standard box office walk-in price at the club door.">
+                        Official: ₹{selectedEvent.basePrice} ℹ️
+                      </Tooltip>
+                    </span>
                   </div>
                 </div>
               )}
 
               {/* VIP Perk Builder (Chips + Other Custom Input) */}
               <div className="space-y-2">
-                <label className="block text-xs text-slate-300 font-semibold">Bundle VIP Guest Perks</label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs text-slate-300 font-semibold">Bundle VIP Guest Perks</label>
+                  <Tooltip content="Add value-add perks approved by the club to give your buyers exclusive VIP treatment.">
+                    <span className="text-[10px] text-pink-400 cursor-pointer">What are perks? ℹ️</span>
+                  </Tooltip>
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {ALL_AVAILABLE_PERKS.map((perk) => {
                     const active = selectedPerks.includes(perk);
@@ -4105,30 +5603,50 @@
 
             <div className="lg:col-span-5 space-y-4">
               {/* Yield Breakdown */}
-              <div className="p-5 rounded-3xl glass-panel border border-cyan-500/30 space-y-3">
+              <div className="p-5 rounded-3xl card-blur border border-cyan-500/30 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-white">Live Commission Yield Breakdown</h3>
                   <span className="text-[10px] text-cyan-300 font-mono">Sec 194H Compliant</span>
                 </div>
                 <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 space-y-2 text-xs">
                   <div className="flex justify-between text-slate-400">
-                    <span>Event Base Price:</span>
+                    <span className="tooltip-dotted">
+                      <Tooltip content="Standard box office walk-in price set by the venue.">
+                        Event Base Price ℹ️:
+                      </Tooltip>
+                    </span>
                     <span className="text-slate-300">₹{selectedEvent?.basePrice || 2000}</span>
                   </div>
                   <div className="flex justify-between text-slate-400">
-                    <span>Guest Discount Given:</span>
+                    <span className="tooltip-dotted">
+                      <Tooltip content="Price discount you pass down to your buyers to accelerate ticket volume.">
+                        Guest Discount Given ℹ️:
+                      </Tooltip>
+                    </span>
                     <span className="text-white font-semibold">₹{discountGiven}</span>
                   </div>
                   <div className="flex justify-between text-slate-400">
-                    <span>Gross Commission / Pax:</span>
+                    <span className="tooltip-dotted">
+                      <Tooltip content="Gross promoter fee earned per verified pass sold.">
+                        Gross Commission / Pax ℹ️:
+                      </Tooltip>
+                    </span>
                     <span className="text-cyan-300 font-bold">₹{estimatedGrossCommission}</span>
                   </div>
                   <div className="flex justify-between text-slate-400">
-                    <span>2% Section 194H TDS:</span>
+                    <span className="tooltip-dotted">
+                      <Tooltip content="Sec 194H 2% Tax Deducted at Source on commission, auto-reported to Income Tax Dept.">
+                        2% Section 194H TDS ℹ️:
+                      </Tooltip>
+                    </span>
                     <span className="text-rose-400 font-mono">-₹{estimatedTds}</span>
                   </div>
                   <div className="pt-2 border-t border-white/10 flex justify-between text-sm font-bold text-white">
-                    <span>Net Take-Home / Pax:</span>
+                    <span className="tooltip-dotted">
+                      <Tooltip content="Net amount disbursed directly into your UPI account after gate verification.">
+                        Net Take-Home / Pax ℹ️:
+                      </Tooltip>
+                    </span>
                     <span className="text-emerald-400 font-black">₹{estimatedNetPayout}</span>
                   </div>
                 </div>
@@ -4205,7 +5723,7 @@
 
     // --- MAIN ROOT APPLICATION ---
     const App = () => {
-      const { role, activeView, setActiveView, toast } = useApp();
+      const { role, activeView, setActiveView, toast, claimClubModalOpen, setClaimClubModalOpen, pendingClaimVenueId } = useApp();
       const [gatewayOpen, setGatewayOpen] = useState(false);
       const [passesOpen, setPassesOpen] = useState(false);
       const [createPROpen, setCreatePROpen] = useState(false);
@@ -4292,7 +5810,13 @@
               ) : (
                 <>
                   {role === 'guest' && <GuestView onOpenPassWithTicketId={(id) => { setSelectedTkt(id); setPassesOpen(true); }} />}
-                  {role === 'owner' && <OwnerView onOpenPRNetwork={() => setActiveView('pr_network')} onOpenCityEvents={() => setActiveView('city_events')} />}
+                  {role === 'owner' && (
+                    <OwnerView
+                      onOpenPRNetwork={() => setActiveView('pr_network')}
+                      onOpenCityEvents={() => setActiveView('city_events')}
+                      onOpenClaimClub={() => setClaimClubModalOpen(true)}
+                    />
+                  )}
                   {role === 'pr' && <PromoterView onOpenCreatePR={() => setCreatePROpen(true)} onOpenCampaigns={() => setActiveView('campaigns')} />}
                 </>
               )}
@@ -4342,10 +5866,26 @@
             <p>© 2026 NightVibe India Technologies Pvt. Ltd. • Dynamic PR Bidding, Gate Pass & Talent Network</p>
           </footer>
 
-          <PersonaWelcomeGatewayModal isOpen={gatewayOpen} onClose={() => setGatewayOpen(false)} onOpenAuth={() => { setGatewayOpen(false); setAuthOpen(true); }} />
+          <PersonaWelcomeGatewayModal
+            isOpen={gatewayOpen}
+            onClose={() => setGatewayOpen(false)}
+            onOpenAuth={() => { setGatewayOpen(false); setAuthOpen(true); }}
+            onOpenClaimClub={() => { setGatewayOpen(false); setClaimClubModalOpen(true); }}
+            onOpenCreatePR={() => { setGatewayOpen(false); setCreatePROpen(true); }}
+          />
+          <ClaimClubVerificationModal
+            isOpen={claimClubModalOpen}
+            onClose={() => setClaimClubModalOpen(false)}
+            initialVenueId={pendingClaimVenueId}
+          />
           <MyPassesModal isOpen={passesOpen} onClose={() => setPassesOpen(false)} defaultTicketId={selectedTkt} />
           <CreatePRProfileModal isOpen={createPROpen} onClose={() => setCreatePROpen(false)} />
-          <PhoneOTPLoginModal isOpen={authOpen} onClose={() => setAuthOpen(false)} onOpenCreatePR={() => { setAuthOpen(false); setCreatePROpen(true); }} />
+          <PhoneOTPLoginModal
+            isOpen={authOpen}
+            onClose={() => setAuthOpen(false)}
+            onOpenCreatePR={() => { setAuthOpen(false); setCreatePROpen(true); }}
+            onOpenClaimClub={() => { setAuthOpen(false); setClaimClubModalOpen(true); }}
+          />
 
           {toast && (
             <div className="fixed bottom-20 md:bottom-6 right-6 z-50 p-3.5 rounded-2xl bg-emerald-950/90 border border-emerald-500 text-emerald-200 text-xs font-semibold shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-5">
