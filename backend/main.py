@@ -89,7 +89,11 @@ class VerifyOTPRequest(BaseModel):
 
 class CreateBookingRequest(BaseModel):
     eventId: str
-    prBidId: str
+    prBidId: Optional[str] = None
+    bookingType: Optional[str] = "FLOOR_PASS" # "FLOOR_PASS" | "VIP_TABLE"
+    tableCategoryId: Optional[str] = None
+    tableCount: Optional[int] = 1
+    specialRequests: Optional[str] = None
     maleCount: int = 0
     femaleCount: int = 0
     coupleCount: int = 0
@@ -200,41 +204,81 @@ def create_booking(req: CreateBookingRequest, user: Dict[str, Any] = Depends(cur
     event = next((e for e in DB_STATE["events"] if e["id"] == req.eventId), None)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+
+    is_vip_table = req.bookingType == "VIP_TABLE" or bool(req.tableCategoryId)
+    
+    if is_vip_table:
+        table_cats = event.get("tableCategories", [])
+        cat = next((c for c in table_cats if c["id"] == req.tableCategoryId), table_cats[0] if table_cats else None)
+        if not cat:
+            raise HTTPException(status_code=400, detail="VIP Table category not found")
+            
+        booked_count = cat.get("bookedTables", 0)
+        total_tables = cat.get("totalTables", 8)
+        if booked_count >= total_tables:
+            raise HTTPException(status_code=400, detail="This VIP table category is sold out")
+            
+        next_table_num = booked_count + 1
+        tiers = cat.get("tiers", [])
+        active_tier = next((t for t in tiers if next_table_num >= t.get("minTable", 1) and next_table_num <= t.get("maxTable", 99)), tiers[-1] if tiers else {"price": 25000, "minSpend": 18000, "name": "Standard Tier"})
         
-    bids = event.get("bids", [])
-    bid = next((b for b in bids if b["id"] == req.prBidId), bids[0] if bids else None)
-    
-    total_pax = req.maleCount + req.femaleCount + (req.coupleCount * 2)
-    if total_pax <= 0:
-        raise HTTPException(status_code=400, detail="Headcount must be at least 1 person")
-    if total_pax > 12:
-        raise HTTPException(status_code=400, detail="Maximum 12 pax per pass. Contact VIP Table host for larger groups.")
+        total_pax = cat.get("paxPerTable", 6)
+        subtotal = active_tier.get("price", 25000)
+        platform_fee = int(round(subtotal * 0.02)) + 100
+        total_amount = subtotal + platform_fee
         
-    unit_price = bid["price"] if bid else event["basePrice"]
-    
-    # 3-Way Tier Multipliers: Male 1.0x, Female 0.6x, Couple 1.5x (per couple = 2 pax)
-    male_subtotal = req.maleCount * unit_price
-    female_subtotal = req.femaleCount * int(round(unit_price * 0.6))
-    couple_subtotal = req.coupleCount * int(round(unit_price * 1.5))
-    
-    subtotal = male_subtotal + female_subtotal + couple_subtotal
-    platform_fee = int(round(subtotal * 0.035)) + 40
-    total_amount = subtotal + platform_fee
-    
-    # Aligned Value-Driven PR Commission Calculation
-    promoter = next((p for p in DB_STATE["promoters"] if p["id"] == (bid["prId"] if bid else "")), None)
-    cap = event.get("commissionCap", 300)
-    trust_multiplier = 0.7 + 0.6 * ((promoter.get("showUpRate", 85) if promoter else 85) / 100.0)
-    
-    base_part = cap * 0.55
-    discount_per_pax = max(0, event["basePrice"] - unit_price)
-    discount_penalty = discount_per_pax * 0.25
-    off_peak_bonus = cap * 0.35 if event.get("isOffPeak", False) else 0
-    
-    raw_comm = (base_part + off_peak_bonus - discount_penalty) * trust_multiplier
-    pr_comm_per_pax = int(round(min(cap, max(150, raw_comm))))
-    total_pr_commission = pr_comm_per_pax * total_pax
-    venue_payout = max(0, subtotal - total_pr_commission)
+        # Increment booked tables in state
+        cat["bookedTables"] = booked_count + (req.tableCount or 1)
+        
+        # VIP PR commission: 8% of table reservation
+        bids = event.get("bids", [])
+        bid = next((b for b in bids if b["id"] == req.prBidId), None)
+        total_pr_commission = int(round(subtotal * 0.08)) if bid else 0
+        venue_payout = max(0, subtotal - total_pr_commission)
+        
+        allocated_table_info = {
+            "categoryName": cat.get("name", "VIP Table"),
+            "tableNumber": f"Table #{next_table_num}",
+            "minSpendCover": active_tier.get("minSpend", 0),
+            "tierName": active_tier.get("name", "Standard Tier")
+        }
+    else:
+        # General Floor Pass Booking
+        bids = event.get("bids", [])
+        bid = next((b for b in bids if b["id"] == req.prBidId), bids[0] if bids else None)
+        
+        total_pax = req.maleCount + req.femaleCount + (req.coupleCount * 2)
+        if total_pax <= 0:
+            raise HTTPException(status_code=400, detail="Headcount must be at least 1 person")
+        if total_pax > 12:
+            raise HTTPException(status_code=400, detail="Maximum 12 pax per pass. Contact VIP Table host for larger groups.")
+            
+        unit_price = bid["price"] if bid else event["basePrice"]
+        
+        # 3-Way Tier Multipliers: Male 1.0x, Female 0.6x, Couple 1.5x (per couple = 2 pax)
+        male_subtotal = req.maleCount * unit_price
+        female_subtotal = req.femaleCount * int(round(unit_price * 0.6))
+        couple_subtotal = req.coupleCount * int(round(unit_price * 1.5))
+        
+        subtotal = male_subtotal + female_subtotal + couple_subtotal
+        platform_fee = int(round(subtotal * 0.035)) + 40
+        total_amount = subtotal + platform_fee
+        
+        # Aligned Value-Driven PR Commission Calculation
+        promoter = next((p for p in DB_STATE["promoters"] if p["id"] == (bid["prId"] if bid else "")), None)
+        cap = event.get("commissionCap", 300)
+        trust_multiplier = 0.7 + 0.6 * ((promoter.get("showUpRate", 85) if promoter else 85) / 100.0)
+        
+        base_part = cap * 0.55
+        discount_per_pax = max(0, event["basePrice"] - unit_price)
+        discount_penalty = discount_per_pax * 0.25
+        off_peak_bonus = cap * 0.35 if event.get("isOffPeak", False) else 0
+        
+        raw_comm = (base_part + off_peak_bonus - discount_penalty) * trust_multiplier
+        pr_comm_per_pax = int(round(min(cap, max(150, raw_comm))))
+        total_pr_commission = pr_comm_per_pax * total_pax
+        venue_payout = max(0, subtotal - total_pr_commission)
+        allocated_table_info = None
     
     # 80-bit Cryptographically Secure Server-Issued Ticket ID
     ticket_id = generate_ticket_id()
@@ -244,19 +288,22 @@ def create_booking(req: CreateBookingRequest, user: Dict[str, Any] = Depends(cur
         "id": ticket_id,
         "eventId": req.eventId,
         "venueId": event["venueId"],
-        "prId": bid["prId"] if bid else "direct",
+        "prId": bid["prId"] if (not is_vip_table and bid) else (bid["prId"] if (is_vip_table and bid) else "direct"),
+        "bookingType": "VIP_TABLE" if is_vip_table else "FLOOR_PASS",
         "guestName": req.guestName or user.get("metadata", {}).get("name", "Guest User"),
         "guestPhone": user.get("sub", req.guestPhone),
         "maleCount": req.maleCount,
         "femaleCount": req.femaleCount,
         "coupleCount": req.coupleCount,
         "pax": total_pax,
-        "unitPrice": unit_price,
+        "unitPrice": subtotal if is_vip_table else unit_price,
         "subtotal": subtotal,
         "platformFee": platform_fee,
         "totalAmount": total_amount,
         "promoterPayout": total_pr_commission,
         "clubPayout": venue_payout,
+        "tableDetails": allocated_table_info,
+        "specialRequests": req.specialRequests,
         "salt": pass_salt,
         "status": "PENDING_PAYMENT", # Gated until Razorpay webhook confirms payment
         "escrowStatus": "HELD_IN_ESCROW",

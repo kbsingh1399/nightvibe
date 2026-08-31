@@ -53,6 +53,7 @@ class Event(Base):
     doors_open_at = Column(DateTime, nullable=True)
     image_url = Column(Text, nullable=False)
     approved_perks = Column(JSON, default=list)  # [{id, name, value, type}]
+    table_categories = Column(JSON, default=list) # [{id, name, paxPerTable, totalTables, bookedTables, tiers: [...]}]
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     venue = relationship("Venue", back_populates="events")
@@ -117,6 +118,7 @@ class BookingPass(Base):
 
     guest_name = Column(String, default="Guest User")
     guest_phone = Column(String, default="+91 9876543210")
+    booking_type = Column(String, default="FLOOR_PASS") # "FLOOR_PASS" | "VIP_TABLE"
     male_count = Column(Integer, default=1)
     female_count = Column(Integer, default=1)
     couple_count = Column(Integer, default=0)
@@ -128,6 +130,8 @@ class BookingPass(Base):
     total_amount = Column(Integer, nullable=False)
     promoter_payout = Column(Integer, default=0)
     club_payout = Column(Integer, default=0)
+    table_details = Column(JSON, nullable=True) # {categoryName, tableNumber, minSpendCover, tierName}
+    special_requests = Column(Text, nullable=True)
 
     qr_token_secret = Column(String, nullable=False) # Server salt for HMAC derivation
     status = Column(Enum(BookingStatus), default=BookingStatus.PENDING_PAYMENT)
