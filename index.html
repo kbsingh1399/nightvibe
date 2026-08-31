@@ -694,53 +694,74 @@
       return text;
     };
 
-    // Calculate Active Table Tier and Availability
+    // Calculate Active Table Tier and Availability with complete alias mapping
     const getTableCategoryTierInfo = (category) => {
       if (!category) {
         return {
-          activeTier: { name: 'Standard', price: 35000, minSpend: 30000, minTable: 1, maxTable: 8 },
+          categoryName: 'VIP Table',
+          activeTier: { name: 'Standard Rate', price: 35000, minSpend: 30000, minTable: 1, maxTable: 8 },
           nextTier: null,
+          nextTierInfo: null,
           nextTableNumber: 1,
+          nextTableNum: 1,
           remainingTables: 0,
+          totalTables: 1,
+          bookedTables: 0,
           isSoldOut: true,
           activePrice: 35000,
+          currentPrice: 35000,
           activeMinSpend: 30000,
+          currentMinSpend: 30000,
           surgeLabel: 'Sold Out',
         };
       }
-      const booked = category.bookedTables || 0;
-      const total = category.totalTables || 1;
+      const booked = Number(category.bookedTables) || 0;
+      const total = Math.max(1, Number(category.totalTables) || 1);
       const remaining = Math.max(0, total - booked);
       const nextTableNumber = booked + 1;
       
-      const tiers = category.tiers || [];
-      let activeTier = tiers[0] || { name: 'Standard Rate', price: 35000, minSpend: 30000, minTable: 1, maxTable: total };
+      const tiers = (category.tiers && category.tiers.length > 0)
+        ? category.tiers
+        : [{ name: 'Standard Rate', range: `Tables 1 - ${total}`, price: 35000, minSpend: 30000, minTable: 1, maxTable: total }];
       
+      let activeTier = tiers[0];
       for (let i = 0; i < tiers.length; i++) {
         const t = tiers[i];
-        if (nextTableNumber >= (t.minTable || 1) && nextTableNumber <= (t.maxTable || total)) {
+        const minT = Number(t.minTable) || 1;
+        const maxT = Number(t.maxTable) || total;
+        if (nextTableNumber >= minT && nextTableNumber <= maxT) {
           activeTier = t;
           break;
         }
-        if (i === tiers.length - 1 && nextTableNumber > (t.maxTable || total)) {
+        if (i === tiers.length - 1 && nextTableNumber > maxT) {
           activeTier = t;
         }
       }
 
       const currentTierIndex = tiers.findIndex(t => t.name === activeTier.name);
       const nextTier = (currentTierIndex >= 0 && currentTierIndex + 1 < tiers.length) ? tiers[currentTierIndex + 1] : null;
+      const currentPrice = Number(activeTier.price) || 35000;
+      const currentMinSpend = Number(activeTier.minSpend) || 30000;
 
       return {
+        categoryName: category.name || 'VIP Table',
         activeTier,
         nextTier,
+        nextTierInfo: nextTier,
         nextTableNumber: Math.min(total, nextTableNumber),
+        nextTableNum: Math.min(total, nextTableNumber),
         remainingTables: remaining,
+        totalTables: total,
+        bookedTables: booked,
         isSoldOut: remaining === 0,
-        activePrice: activeTier.price,
-        activeMinSpend: activeTier.minSpend,
-        surgeLabel: activeTier.name,
+        activePrice: currentPrice,
+        currentPrice: currentPrice,
+        activeMinSpend: currentMinSpend,
+        currentMinSpend: currentMinSpend,
+        surgeLabel: activeTier.name || 'Standard Tier',
       };
     };
+
 
     const INITIAL_EVENTS = [
       {
@@ -4968,8 +4989,21 @@
 
       const [title, setTitle] = useState('');
       const [genre, setGenre] = useState('Techno & Underground');
+      
+      // Date Picker & Quick Selection State
+      const [dateMode, setDateMode] = useState('preset'); // 'preset' | 'custom'
+      const [datePreset, setDatePreset] = useState('Saturday, Tonight');
+      const [customDate, setCustomDate] = useState(() => {
+        const d = new Date();
+        return d.toISOString().split('T')[0];
+      });
       const [date, setDate] = useState('Saturday, Tonight');
+
+      // Door Hours Dropdown State
+      const [doorOpenTime, setDoorOpenTime] = useState('10:00 PM');
+      const [doorCloseTime, setDoorCloseTime] = useState('03:30 AM');
       const [time, setTime] = useState('10:00 PM - 03:30 AM');
+
       const [basePrice, setBasePrice] = useState('2000');
       const [floorPrice, setFloorPrice] = useState('1600');
       const [commissionCap, setCommissionCap] = useState('350');
@@ -5016,7 +5050,7 @@
         },
       ]);
 
-      // Perks state: Array of perks with editable values and enabled status
+      // Perks state
       const [perksList, setPerksList] = useState([
         { id: 'perk_shooter', name: '1 Free Craft Shooter / Cocktail', value: 350, enabled: true, isCustom: false },
         { id: 'perk_fasttrack', name: 'Fast-Track Queue Bypass (<5m wait)', value: 400, enabled: true, isCustom: false },
@@ -5028,6 +5062,30 @@
       const [catalogSelectedPerk, setCatalogSelectedPerk] = useState('');
       const [newCustomPerkName, setNewCustomPerkName] = useState('');
       const [newCustomPerkValue, setNewCustomPerkValue] = useState('500');
+
+      // Sync Timing whenever Door Open or Close changes
+      useEffect(() => {
+        setTime(`${doorOpenTime} - ${doorCloseTime}`);
+      }, [doorOpenTime, doorCloseTime]);
+
+      // Sync Date string when presets or custom picker changes
+      const handleSelectDatePreset = (presetText) => {
+        setDateMode('preset');
+        setDatePreset(presetText);
+        setDate(presetText);
+      };
+
+      const handleCustomDateChange = (isoVal) => {
+        setCustomDate(isoVal);
+        setDateMode('custom');
+        if (isoVal) {
+          const d = new Date(isoVal + 'T00:00:00');
+          const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+          const monthName = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const formatted = `${dayName}, ${monthName}`;
+          setDate(formatted);
+        }
+      };
 
       if (!isOpen) return null;
 
@@ -5062,7 +5120,7 @@
           prev.map((cat) => ({
             ...cat,
             name: sanitizeNightlifeTitle(cat.name),
-            tiers: cat.tiers.map((t) => ({ ...t, name: sanitizeNightlifeTitle(t.name) })),
+            tiers: (cat.tiers || []).map((t) => ({ ...t, name: sanitizeNightlifeTitle(t.name) })),
           }))
         );
 
@@ -5080,9 +5138,10 @@
       // Table Category Management Handlers
       const handleAddTableCategory = (type = 'custom') => {
         let newCat;
+        const timestamp = Date.now();
         if (type === 'cabana') {
           newCat = {
-            id: `tbl_cat_${Date.now()}`,
+            id: `tbl_cat_${timestamp}`,
             name: 'Owner Celebrity Cabana',
             badge: 'ULTRA VIP CABANA',
             paxPerTable: 15,
@@ -5097,7 +5156,7 @@
           };
         } else if (type === 'cocktail') {
           newCat = {
-            id: `tbl_cat_${Date.now()}`,
+            id: `tbl_cat_${timestamp}`,
             name: 'High-Top Cocktail Table',
             badge: 'COCKTAIL TABLE',
             paxPerTable: 4,
@@ -5112,18 +5171,18 @@
           };
         } else {
           newCat = {
-            id: `tbl_cat_${Date.now()}`,
-            name: 'VIP Private Deck Table',
-            badge: 'VIP DECK',
-            paxPerTable: 8,
-            totalTables: 5,
+            id: `tbl_cat_${timestamp}`,
+            name: 'Custom VIP Table',
+            badge: 'VIP TABLE',
+            paxPerTable: 6,
+            totalTables: 4,
             bookedTables: 0,
             tiers: [
-              { name: 'Early Bird (Tables 1-2)', range: 'Tables 1 - 2', minTable: 1, maxTable: 2, price: 40000, minSpend: 35000 },
-              { name: 'Surge Tier (Tables 3-5)', range: 'Tables 3 - 5', minTable: 3, maxTable: 5, price: 65000, minSpend: 55000 },
+              { name: 'Tier 1 (Tables 1-2)', range: 'Tables 1 - 2', minTable: 1, maxTable: 2, price: 30000, minSpend: 25000 },
+              { name: 'Surge Tier (Tables 3-4)', range: 'Tables 3 - 4', minTable: 3, maxTable: 4, price: 50000, minSpend: 42000 },
             ],
-            perks: ['Dedicated VIP Hostess', 'F&B Credit Cover', 'Valet Parking'],
-            description: 'Private elevated deck overlooking the soundstage.',
+            perks: ['Dedicated VIP Hostess', 'F&B Credit Cover', 'Priority Valet Parking'],
+            description: 'Custom VIP bottle service table with dedicated hostess.',
           };
         }
 
@@ -5131,11 +5190,8 @@
         showToast(`Added: ${newCat.name}`, 'success');
       };
 
+      // Allowed to remove all table categories down to 0
       const handleRemoveTableCategory = (catId) => {
-        if (tableCategories.length <= 1) {
-          showToast('At least one table category is required (or keep general floor only)', 'info');
-          return;
-        }
         setTableCategories((prev) => prev.filter((c) => c.id !== catId));
         showToast('Table category removed', 'info');
       };
@@ -5155,15 +5211,15 @@
             if (c.id !== catId) return c;
             const currentTiers = c.tiers || [];
             const lastTier = currentTiers[currentTiers.length - 1];
-            const nextMin = (lastTier ? lastTier.maxTable : 0) + 1;
-            const nextMax = Math.max(nextMin, c.totalTables || nextMin + 1);
+            const nextMin = (lastTier ? Number(lastTier.maxTable) || 0 : 0) + 1;
+            const nextMax = Math.max(nextMin, Number(c.totalTables) || nextMin + 1);
             const newTier = {
               name: `Surge Tier ${currentTiers.length + 1}`,
               range: `Tables ${nextMin} - ${nextMax}`,
               minTable: nextMin,
               maxTable: nextMax,
-              price: (lastTier ? lastTier.price : 40000) + 20000,
-              minSpend: (lastTier ? lastTier.minSpend : 35000) + 18000,
+              price: (lastTier ? Number(lastTier.price) || 40000 : 40000) + 20000,
+              minSpend: (lastTier ? Number(lastTier.minSpend) || 35000 : 35000) + 18000,
             };
             return { ...c, tiers: [...currentTiers, newTier] };
           })
@@ -5175,11 +5231,7 @@
         setTableCategories((prev) =>
           prev.map((c) => {
             if (c.id !== catId) return c;
-            if (c.tiers.length <= 1) {
-              showToast('At least one pricing tier required per category', 'info');
-              return c;
-            }
-            const updatedTiers = c.tiers.filter((_, idx) => idx !== tierIndex);
+            const updatedTiers = (c.tiers || []).filter((_, idx) => idx !== tierIndex);
             return { ...c, tiers: updatedTiers };
           })
         );
@@ -5189,7 +5241,7 @@
         setTableCategories((prev) =>
           prev.map((c) => {
             if (c.id !== catId) return c;
-            const updatedTiers = c.tiers.map((t, idx) => {
+            const updatedTiers = (c.tiers || []).map((t, idx) => {
               if (idx !== tierIndex) return t;
               return { ...t, [field]: val };
             });
@@ -5318,11 +5370,33 @@
           description.trim() || `Exclusive ${genre} event at ${venue.name}. VIP bottle service tables and dynamic PR deals.`
         );
 
+        const cleanTableCategories = (tableCategories || []).map((cat) => ({
+          ...cat,
+          id: cat.id || `tbl_${Date.now()}_${Math.random()}`,
+          name: sanitizeNightlifeTitle(cat.name || 'VIP Table'),
+          badge: cat.badge || 'VIP TABLE',
+          paxPerTable: Number(cat.paxPerTable) || 6,
+          totalTables: Number(cat.totalTables) || 1,
+          bookedTables: Number(cat.bookedTables) || 0,
+          tiers: (cat.tiers && cat.tiers.length > 0)
+            ? cat.tiers.map((t, idx) => ({
+                name: t.name || `Tier ${idx + 1}`,
+                range: t.range || `Tables ${t.minTable || 1} - ${t.maxTable || 1}`,
+                minTable: Number(t.minTable) || 1,
+                maxTable: Number(t.maxTable) || Number(cat.totalTables) || 1,
+                price: Number(t.price) || 35000,
+                minSpend: Number(t.minSpend) || 30000,
+              }))
+            : [{ name: 'Standard Rate', range: `Tables 1 - ${cat.totalTables || 1}`, minTable: 1, maxTable: Number(cat.totalTables) || 1, price: 35000, minSpend: 30000 }],
+          perks: cat.perks || ['Dedicated VIP Hostess', 'F&B Credit Cover', 'Valet Parking'],
+          description: cat.description || 'VIP bottle service table.',
+        }));
+
         const newEvent = {
           title: cleanTitle,
           genre,
-          date,
-          time,
+          date: date || 'Saturday, Tonight',
+          time: time || '10:00 PM - 03:30 AM',
           image: selectedImage,
           basePrice: bPrice,
           floorPrice: fPrice,
@@ -5330,13 +5404,13 @@
           capacityQuota: qAlloc,
           description: cleanDesc,
           approvedPerks: activePerkObjects,
-          tableCategories,
+          tableCategories: cleanTableCategories,
         };
 
         createEvent(newEvent);
         window.confetti && window.confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
         window.SoundEngine?.play('success');
-        showToast(`🎉 "${newEvent.title}" is live with ${tableCategories.length} VIP Table categories!`, 'success');
+        showToast(`🎉 "${newEvent.title}" is live with ${cleanTableCategories.length} VIP Table categories!`, 'success');
         onClose();
         if (onEventCreated) onEventCreated();
       };
@@ -5350,8 +5424,11 @@
       const projectedGrossFloor = numQuota * numFloor;
       const projectedPRPool = numQuota * numCap;
 
-      const totalVIPTablesCount = tableCategories.reduce((acc, c) => acc + (Number(c.totalTables) || 0), 0);
-      const totalVIPSeatsCount = tableCategories.reduce((acc, c) => acc + ((Number(c.totalTables) || 0) * (Number(c.paxPerTable) || 1)), 0);
+      const totalVIPTablesCount = (tableCategories || []).reduce((acc, c) => acc + (Number(c.totalTables) || 0), 0);
+      const totalVIPSeatsCount = (tableCategories || []).reduce((acc, c) => acc + ((Number(c.totalTables) || 0) * (Number(c.paxPerTable) || 1)), 0);
+
+      const DOOR_OPEN_OPTIONS = ['07:00 PM', '08:00 PM', '08:30 PM', '09:00 PM', '09:30 PM', '10:00 PM', '10:30 PM', '11:00 PM'];
+      const DOOR_CLOSE_OPTIONS = ['01:30 AM', '02:00 AM', '02:30 AM', '03:00 AM', '03:30 AM', '04:00 AM', '05:00 AM', 'Sunrise (06:00 AM)'];
 
       return ReactDOM.createPortal(
         <div
@@ -5359,28 +5436,28 @@
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <div
-            className="relative w-full max-w-3xl max-h-[92vh] flex flex-col rounded-3xl glass-panel border border-teal-500/40 overflow-hidden shadow-2xl bg-[#090d16]/95"
+            className="relative w-full max-w-3xl max-h-[94vh] flex flex-col rounded-3xl glass-panel border border-teal-500/40 overflow-hidden shadow-2xl bg-[#090d16]/95"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top Pinned Glass Header */}
-            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-teal-950/70 via-[#0a101d]/90 to-black/80 shrink-0">
+            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-teal-950/80 via-[#0a101d]/95 to-black/90 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-2xl shadow-inner shadow-teal-500/20">
+                <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-2xl shadow-inner shadow-teal-500/20">
                   🎉
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                    <span className="text-xs uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
                       CLUB EVENT STUDIO
                     </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                       {venue.name}
                     </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
                       🍾 VIP Table Engine Active
                     </span>
                   </div>
-                  <h3 className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
+                  <h3 className="text-lg sm:text-xl font-black text-white tracking-tight mt-1">
                     Host Event, Manage Tables &amp; Launch PR Campaign
                   </h3>
                 </div>
@@ -5389,7 +5466,7 @@
                 <button
                   type="button"
                   onClick={handleAutoFormatAllText}
-                  className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-500/20 to-purple-500/20 hover:from-teal-500/30 hover:to-purple-500/30 text-teal-300 border border-teal-400/40 font-bold text-xs shadow-md transition"
+                  className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-teal-500/25 to-purple-500/25 hover:from-teal-500/40 hover:to-purple-500/40 text-teal-300 border border-teal-400/50 font-black text-xs shadow-md transition"
                   title="Auto-format title, description, and perks with Title Case & Acronyms"
                 >
                   <span>✨</span>
@@ -5397,7 +5474,7 @@
                 </button>
                 <button
                   onClick={onClose}
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center text-sm transition"
+                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-base font-bold transition"
                   title="Close"
                 >
                   ✕
@@ -5406,19 +5483,19 @@
             </div>
 
             {/* Scrollable Form Body */}
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-6 text-xs text-slate-300">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-6 text-sm text-slate-200">
               
               {/* Section 1: Basic Event Details & Genre */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between pb-1 border-b border-white/5 text-slate-200 font-bold">
+              <div className="space-y-4 p-4 rounded-2xl bg-black/40 border border-white/10">
+                <div className="flex items-center justify-between pb-2 border-b border-white/10 text-white font-bold text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">1</span>
-                    <span>Basic Event Details &amp; Music Genre</span>
+                    <span className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-xs font-mono font-bold">1</span>
+                    <span>Basic Event Details, Calendar Date &amp; Gate Hours</span>
                   </div>
                   <button
                     type="button"
                     onClick={handleAutoFormatAllText}
-                    className="sm:hidden text-teal-300 font-bold text-[10px] flex items-center gap-1"
+                    className="sm:hidden text-teal-300 font-bold text-xs flex items-center gap-1"
                   >
                     <span>✨</span>
                     <span>AI Polish</span>
@@ -5426,10 +5503,10 @@
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2 space-y-1">
+                  <div className="sm:col-span-2 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="block text-slate-300 font-bold">Event Title &amp; Artist Lineup *</label>
-                      <span className="text-[10px] text-teal-400">Auto-Formats on Blur</span>
+                      <label className="block text-slate-200 font-bold text-xs">Event Title &amp; Artist Lineup *</label>
+                      <span className="text-xs text-teal-400 font-medium">Auto-Formats on Blur</span>
                     </div>
                     <input
                       type="text"
@@ -5438,15 +5515,15 @@
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       onBlur={(e) => setTitle(sanitizeNightlifeTitle(e.target.value))}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white placeholder-slate-500 focus:border-teal-400 focus:outline-none"
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white placeholder-slate-500 focus:border-teal-400 focus:outline-none text-sm font-medium"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-slate-300 font-bold">Music Genre / Vibe</label>
+                  <div className="space-y-1.5">
+                    <label className="block text-slate-200 font-bold text-xs">Music Genre / Vibe</label>
                     <select
                       value={genre}
                       onChange={(e) => setGenre(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white focus:border-teal-400 focus:outline-none text-sm"
                     >
                       <option value="Techno & Underground">Techno &amp; Underground</option>
                       <option value="Commercial EDM">Commercial EDM</option>
@@ -5459,26 +5536,73 @@
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-slate-300 font-bold">Date / Timing Label</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Saturday, Tonight"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
-                    />
+                {/* Drop-down Calendar Date & Quick Chips */}
+                <div className="space-y-2 pt-1">
+                  <label className="block text-slate-200 font-bold text-xs flex items-center justify-between">
+                    <span>📅 Event Calendar Date:</span>
+                    <span className="text-xs text-teal-300 font-mono font-bold">Selected: {date}</span>
+                  </label>
+                  
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {[
+                      { label: '🔥 Tonight', val: 'Saturday, Tonight' },
+                      { label: '⚡ Tomorrow', val: 'Sunday, Tomorrow' },
+                      { label: '🎉 This Friday', val: 'Friday Night' },
+                      { label: '🍸 This Saturday', val: 'Saturday Night' },
+                      { label: '✨ Next Weekend', val: 'Next Weekend Showcase' },
+                    ].map((chip) => (
+                      <button
+                        type="button"
+                        key={chip.val}
+                        onClick={() => handleSelectDatePreset(chip.val)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                          dateMode === 'preset' && datePreset === chip.val
+                            ? 'bg-teal-500 text-black border-teal-400 shadow-md shadow-teal-500/20'
+                            : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
+                    
+                    {/* Interactive Visual Date Picker input */}
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-black/60 border border-teal-500/40">
+                      <span className="text-xs text-teal-300 font-bold">📆 Pick Date:</span>
+                      <input
+                        type="date"
+                        value={customDate}
+                        onChange={(e) => handleCustomDateChange(e.target.value)}
+                        className="bg-transparent text-white font-mono text-xs focus:outline-none cursor-pointer"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-slate-300 font-bold">Door Gate Hours</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 10:00 PM - 03:30 AM"
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
-                    />
+                </div>
+
+                {/* Door Gate Hours Dropdowns */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <div className="space-y-1.5">
+                    <label className="block text-slate-200 font-bold text-xs">🚪 Doors Open Time:</label>
+                    <select
+                      value={doorOpenTime}
+                      onChange={(e) => setDoorOpenTime(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white focus:border-teal-400 focus:outline-none text-sm font-mono"
+                    >
+                      {DOOR_OPEN_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt} className="bg-slate-900 text-white">{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-slate-200 font-bold text-xs">🔒 Door Curfew / Closing Time:</label>
+                    <select
+                      value={doorCloseTime}
+                      onChange={(e) => setDoorCloseTime(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white focus:border-teal-400 focus:outline-none text-sm font-mono"
+                    >
+                      {DOOR_CLOSE_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt} className="bg-slate-900 text-white">{opt}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -5486,18 +5610,18 @@
               {/* Section 2: Cover Artwork Studio */}
               <div className="space-y-3 p-4 rounded-2xl bg-black/40 border border-white/10">
                 <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-white/10">
-                  <div className="flex items-center gap-2 text-slate-200 font-bold">
-                    <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">2</span>
+                  <div className="flex items-center gap-2 text-white font-bold text-sm">
+                    <span className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-xs font-mono font-bold">2</span>
                     <span>Cover Artwork Studio</span>
                   </div>
 
                   {/* Artwork Mode Switcher */}
-                  <div className="flex items-center gap-1 p-0.5 rounded-xl bg-white/5 border border-white/10 text-[11px]">
+                  <div className="flex items-center gap-1 p-0.5 rounded-xl bg-white/5 border border-white/10 text-xs">
                     <button
                       type="button"
                       onClick={() => setArtworkMode('preset')}
-                      className={`px-3 py-1 rounded-lg font-bold transition ${
-                        artworkMode === 'preset' ? 'bg-teal-500 text-black shadow-md' : 'text-slate-400 hover:text-white'
+                      className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                        artworkMode === 'preset' ? 'bg-teal-500 text-black shadow-md' : 'text-slate-300 hover:text-white'
                       }`}
                     >
                       🖼️ Presets
@@ -5505,8 +5629,8 @@
                     <button
                       type="button"
                       onClick={() => setArtworkMode('upload')}
-                      className={`px-3 py-1 rounded-lg font-bold transition ${
-                        artworkMode === 'upload' ? 'bg-teal-500 text-black shadow-md' : 'text-slate-400 hover:text-white'
+                      className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                        artworkMode === 'upload' ? 'bg-teal-500 text-black shadow-md' : 'text-slate-300 hover:text-white'
                       }`}
                     >
                       📤 Upload
@@ -5514,8 +5638,8 @@
                     <button
                       type="button"
                       onClick={() => setArtworkMode('url')}
-                      className={`px-3 py-1 rounded-lg font-bold transition ${
-                        artworkMode === 'url' ? 'bg-teal-500 text-black shadow-md' : 'text-slate-400 hover:text-white'
+                      className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                        artworkMode === 'url' ? 'bg-teal-500 text-black shadow-md' : 'text-slate-300 hover:text-white'
                       }`}
                     >
                       🔗 Web URL
@@ -5525,7 +5649,7 @@
 
                 {/* Sub-View: Presets */}
                 {artworkMode === 'preset' && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
                     {PRESET_COVERS.map((preset) => {
                       const isSelected = selectedImage === preset.url;
                       return (
@@ -5533,14 +5657,14 @@
                           type="button"
                           key={preset.label}
                           onClick={() => setSelectedImage(preset.url)}
-                          className={`p-1.5 rounded-xl border text-left flex flex-col items-center gap-1.5 transition ${
+                          className={`p-2 rounded-xl border text-left flex flex-col items-center gap-1.5 transition ${
                             isSelected
                               ? 'border-teal-400 bg-teal-500/20 ring-2 ring-teal-400/40'
                               : 'border-white/10 bg-white/5 hover:border-white/20'
                           }`}
                         >
-                          <img src={preset.url} alt={preset.label} className="w-full h-16 rounded-lg object-cover" />
-                          <span className="text-[9px] text-slate-300 font-semibold line-clamp-1 text-center">
+                          <img src={preset.url} alt={preset.label} className="w-full h-18 rounded-lg object-cover" />
+                          <span className="text-xs text-slate-200 font-semibold line-clamp-1 text-center">
                             {preset.label}
                           </span>
                         </button>
@@ -5560,12 +5684,12 @@
                       <div className="w-12 h-12 rounded-full bg-teal-500/20 flex items-center justify-center text-2xl">📁</div>
                       <div>
                         <p className="font-bold text-white text-sm">Click to choose image file or Drag &amp; Drop here</p>
-                        <p className="text-slate-400 text-[11px] mt-0.5">Supports high-res JPG, PNG, WEBP (Max 8MB)</p>
+                        <p className="text-slate-400 text-xs mt-0.5">Supports high-res JPG, PNG, WEBP (Max 8MB)</p>
                       </div>
                       {uploadedFileName && (
-                        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/40 text-teal-300 font-mono text-[11px]">
+                        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/40 text-teal-300 font-mono text-xs font-bold">
                           <span>✅ Active Upload:</span>
-                          <span className="font-bold">{uploadedFileName}</span>
+                          <span>{uploadedFileName}</span>
                         </div>
                       )}
                     </div>
@@ -5575,14 +5699,14 @@
                 {/* Sub-View: Image URL */}
                 {artworkMode === 'url' && (
                   <div className="space-y-2">
-                    <label className="block text-slate-300 font-bold">Direct Image Web Address (HTTPS):</label>
+                    <label className="block text-slate-200 font-bold text-xs">Direct Image Web Address (HTTPS):</label>
                     <div className="flex gap-2">
                       <input
                         type="url"
                         placeholder="https://images.unsplash.com/photo-..."
                         value={customUrlInput}
                         onChange={(e) => setCustomUrlInput(e.target.value)}
-                        className="flex-1 px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white font-mono text-xs focus:border-teal-400 focus:outline-none"
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-xs focus:border-teal-400 focus:outline-none"
                       />
                       <button
                         type="button"
@@ -5592,7 +5716,7 @@
                             showToast('Applied custom image URL', 'success');
                           }
                         }}
-                        className="px-4 py-2 rounded-xl bg-teal-500 text-black font-black hover:opacity-90 transition"
+                        className="px-5 py-2.5 rounded-xl bg-teal-500 text-black font-black text-xs hover:opacity-90 transition"
                       >
                         Apply
                       </button>
@@ -5601,20 +5725,20 @@
                 )}
 
                 {/* Live WYSIWYG Artwork Preview Banner */}
-                <div className="mt-3 p-3 rounded-xl bg-black/60 border border-white/10 flex items-center gap-3">
-                  <img src={selectedImage} alt="Active Preview" className="w-20 h-14 rounded-lg object-cover border border-white/20 shrink-0" />
+                <div className="mt-3 p-3.5 rounded-xl bg-black/70 border border-white/15 flex items-center gap-3.5">
+                  <img src={selectedImage} alt="Active Preview" className="w-24 h-16 rounded-xl object-cover border border-white/20 shrink-0 shadow-md" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono font-bold">
+                      <span className="text-xs uppercase px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono font-black">
                         LIVE BANNER PREVIEW
                       </span>
-                      <span className="text-[10px] text-slate-400">{genre}</span>
+                      <span className="text-xs text-slate-300 font-medium">{genre}</span>
                     </div>
-                    <p className="font-bold text-white text-xs truncate mt-0.5">
+                    <p className="font-bold text-white text-sm truncate mt-1">
                       {title || 'Your Event Title Will Appear Here'}
                     </p>
-                    <p className="text-[10px] text-slate-400">
-                      {date} • {time} @ {venue.name}
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      📅 {date} • ⏰ {time} @ {venue.name}
                     </p>
                   </div>
                 </div>
@@ -5622,17 +5746,17 @@
 
               {/* Section 3: General Admission / Floor Passes Capacity & Pricing */}
               <div className="space-y-3 p-4 rounded-2xl bg-black/40 border border-white/10">
-                <div className="flex items-center gap-2 pb-1 border-b border-white/5 text-slate-200 font-bold">
-                  <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">3</span>
+                <div className="flex items-center gap-2 pb-2 border-b border-white/10 text-white font-bold text-sm">
+                  <span className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-xs font-mono font-bold">3</span>
                   <span>General Admission / Dancefloor Passes &amp; PR Bidding Quota</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-slate-300 font-bold flex items-center gap-1">
+                  <div className="space-y-1.5">
+                    <label className="block text-slate-200 font-bold text-xs flex items-center gap-1">
                       <span>Box Office (₹)</span>
                       <Tooltip content="Standard walk-in entry price at the gate without promoter discount.">
-                        <span className="text-[10px] text-slate-400">ℹ️</span>
+                        <span className="text-xs text-slate-400">ℹ️</span>
                       </Tooltip>
                     </label>
                     <input
@@ -5641,15 +5765,15 @@
                       min="100"
                       value={basePrice}
                       onChange={(e) => setBasePrice(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono focus:border-teal-400 focus:outline-none"
+                      className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-sm focus:border-teal-400 focus:outline-none"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-slate-300 font-bold flex items-center gap-1">
+                  <div className="space-y-1.5">
+                    <label className="block text-slate-200 font-bold text-xs flex items-center gap-1">
                       <span>PR Floor Price (₹)</span>
                       <Tooltip content="Absolute price protection floor. Promoters cannot discount below this minimum.">
-                        <span className="text-[10px] text-teal-300">ℹ️</span>
+                        <span className="text-xs text-teal-300">ℹ️</span>
                       </Tooltip>
                     </label>
                     <input
@@ -5658,15 +5782,15 @@
                       min="100"
                       value={floorPrice}
                       onChange={(e) => setFloorPrice(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-teal-500/30 text-teal-300 font-mono font-bold focus:border-teal-400 focus:outline-none"
+                      className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-teal-500/40 text-teal-300 font-mono font-bold text-sm focus:border-teal-400 focus:outline-none"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-slate-300 font-bold flex items-center gap-1">
+                  <div className="space-y-1.5">
+                    <label className="block text-slate-200 font-bold text-xs flex items-center gap-1">
                       <span>Commission Cap (₹)</span>
                       <Tooltip content="Maximum payout per verified ticket check-in.">
-                        <span className="text-[10px] text-purple-300">ℹ️</span>
+                        <span className="text-xs text-purple-300">ℹ️</span>
                       </Tooltip>
                     </label>
                     <input
@@ -5675,15 +5799,15 @@
                       min="50"
                       value={commissionCap}
                       onChange={(e) => setCommissionCap(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-purple-500/30 text-purple-300 font-mono focus:border-purple-400 focus:outline-none"
+                      className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-purple-500/40 text-purple-300 font-mono text-sm focus:border-purple-400 focus:outline-none"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-slate-300 font-bold flex items-center gap-1">
+                  <div className="space-y-1.5">
+                    <label className="block text-slate-200 font-bold text-xs flex items-center gap-1">
                       <span>Floor Pass Quota</span>
                       <Tooltip content="Total individual tickets reserved for promoter distribution.">
-                        <span className="text-[10px] text-amber-300">ℹ️</span>
+                        <span className="text-xs text-amber-300">ℹ️</span>
                       </Tooltip>
                     </label>
                     <input
@@ -5692,106 +5816,130 @@
                       min="10"
                       value={capacityQuota}
                       onChange={(e) => setCapacityQuota(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-amber-500/30 text-amber-300 font-mono focus:border-amber-400 focus:outline-none"
+                      className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-amber-500/40 text-amber-300 font-mono text-sm focus:border-amber-400 focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Economics Simulator */}
-                <div className="p-3 rounded-xl bg-gradient-to-r from-teal-950/40 via-purple-950/20 to-black/60 border border-teal-500/20 flex items-center justify-between flex-wrap gap-3">
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-teal-950/50 via-purple-950/30 to-black/70 border border-teal-500/30 flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-4 flex-wrap">
                     <div>
-                      <span className="text-[10px] text-slate-400 block">Max Buyer Discount</span>
-                      <span className="font-mono font-bold text-teal-300 text-xs">
+                      <span className="text-xs text-slate-400 block">Max Buyer Discount</span>
+                      <span className="font-mono font-bold text-teal-300 text-sm">
                         Up to ₹{maxDiscount} OFF ({discountPct}%)
                       </span>
                     </div>
                     <div className="h-6 w-px bg-white/10" />
                     <div>
-                      <span className="text-[10px] text-slate-400 block">Projected Gate Net (at Floor)</span>
-                      <span className="font-mono font-bold text-white text-xs">
+                      <span className="text-xs text-slate-400 block">Projected Gate Net (at Floor)</span>
+                      <span className="font-mono font-bold text-white text-sm">
                         ₹{projectedGrossFloor.toLocaleString('en-IN')}
                       </span>
                     </div>
                     <div className="h-6 w-px bg-white/10" />
                     <div>
-                      <span className="text-[10px] text-slate-400 block">Max PR Incentive Pool</span>
-                      <span className="font-mono font-bold text-purple-300 text-xs">
+                      <span className="text-xs text-slate-400 block">Max PR Incentive Pool</span>
+                      <span className="font-mono font-bold text-purple-300 text-sm">
                         ₹{projectedPRPool.toLocaleString('en-IN')}
                       </span>
                     </div>
                   </div>
-                  <div className="text-[10px] px-2 py-1 rounded bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30">
+                  <div className="text-xs px-2.5 py-1 rounded-full bg-teal-500/20 text-teal-300 font-bold border border-teal-500/40">
                     🛡️ Floor Protection Active
                   </div>
                 </div>
               </div>
 
               {/* Section 4: VIP Tables, VIP Lounges & Dynamic Tier Range Pricing Studio */}
-              <div className="space-y-4 p-4 rounded-2xl bg-black/40 border border-amber-500/30">
+              <div className="space-y-4 p-4 rounded-2xl bg-black/40 border border-amber-500/40">
                 <div className="flex items-center justify-between pb-2 border-b border-white/10 flex-wrap gap-2">
-                  <div className="flex items-center gap-2 text-slate-200 font-bold">
-                    <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-[10px] font-mono">4</span>
+                  <div className="flex items-center gap-2 text-white font-bold text-sm">
+                    <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-xs font-mono font-bold">4</span>
                     <span>VIP Tables, VIP Lounges &amp; Dynamic Surge Pricing Studio</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">
+                    <span className="text-xs px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 font-mono">
                       {totalVIPTablesCount} Total Tables • {totalVIPSeatsCount} VIP Capacity
                     </span>
                   </div>
                 </div>
 
-                <p className="text-[11px] text-slate-400">
-                  Configure table categories, guest capacity, and customized tiered pricing ranges (e.g. Tables 1-2 at ₹10k, Tables 2-5 at ₹50k, Last Tables 6-8 at ₹1 Lakh). As guests book, remaining tables reduce in real-time and automatically surge to the next pricing tier!
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Configure table categories, guest capacity, and customized tiered pricing ranges (e.g. Tables 1-2 at ₹10k, Tables 2-5 at ₹50k, Last Tables 6-8 at ₹1 Lakh). You can type custom category names directly below or click presets.
                 </p>
+
+                {/* Empty State when all table categories are deleted */}
+                {tableCategories.length === 0 && (
+                  <div className="p-8 text-center rounded-2xl bg-black/60 border border-dashed border-amber-500/30 space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-3xl mx-auto">
+                      🍾
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">No VIP Table Categories Configured</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">This event is currently set for General Admission Floor Passes only.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAddTableCategory('custom')}
+                      className="px-4 py-2 rounded-xl bg-amber-500 text-black font-black text-xs hover:bg-amber-400 transition inline-flex items-center gap-1.5 shadow-lg shadow-amber-500/20"
+                    >
+                      <span>✨</span>
+                      <span>+ Add Your First VIP Table Category</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Table Categories List */}
                 <div className="space-y-4">
                   {tableCategories.map((cat, catIdx) => (
-                    <div key={cat.id} className="p-4 rounded-2xl bg-black/60 border border-white/15 space-y-3">
-                      {/* Top Category Title Bar */}
-                      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-white/10">
-                        <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                          <span className="text-base">🍾</span>
-                          <input
-                            type="text"
-                            value={cat.name}
-                            onChange={(e) => handleUpdateCategoryField(cat.id, 'name', e.target.value)}
-                            onBlur={(e) => handleUpdateCategoryField(cat.id, 'name', sanitizeNightlifeTitle(e.target.value))}
-                            placeholder="Category Name (e.g. VIP Lounge Table)"
-                            className="bg-transparent font-black text-sm text-white focus:outline-none focus:border-b focus:border-amber-400 flex-1"
-                          />
+                    <div key={cat.id} className="p-4 rounded-2xl bg-black/70 border border-white/20 space-y-3.5 shadow-lg">
+                      {/* Top Category Title Bar with Direct Editable Name */}
+                      <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-white/10">
+                        <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+                          <span className="text-xl">🍾</span>
+                          <div className="flex-1">
+                            <span className="text-[10px] uppercase font-mono font-bold text-amber-300 block">Editable Category Name:</span>
+                            <input
+                              type="text"
+                              value={cat.name}
+                              onChange={(e) => handleUpdateCategoryField(cat.id, 'name', e.target.value)}
+                              onBlur={(e) => handleUpdateCategoryField(cat.id, 'name', sanitizeNightlifeTitle(e.target.value))}
+                              placeholder="e.g. VIP Lounge Table / Backstage Lounge"
+                              className="w-full bg-transparent font-black text-sm text-white focus:outline-none focus:border-b focus:border-amber-400 px-1 py-0.5 border-b border-transparent hover:border-white/20"
+                            />
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-slate-400">Pax / Table:</span>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-xl border border-white/10">
+                            <span className="text-xs text-slate-300 font-bold">Pax / Table:</span>
                             <input
                               type="number"
                               min="2"
                               max="30"
                               value={cat.paxPerTable}
                               onChange={(e) => handleUpdateCategoryField(cat.id, 'paxPerTable', Number(e.target.value) || 6)}
-                              className="w-12 px-2 py-1 rounded-lg bg-white/10 border border-white/20 text-white font-mono text-center text-xs font-bold focus:outline-none"
+                              className="w-12 px-1.5 py-0.5 rounded-lg bg-white/10 border border-white/20 text-white font-mono text-center text-xs font-bold focus:outline-none"
                             />
                           </div>
 
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-slate-400">Total Tables:</span>
+                          <div className="flex items-center gap-1.5 bg-amber-500/10 px-2 py-1 rounded-xl border border-amber-500/30">
+                            <span className="text-xs text-amber-300 font-bold">Total Tables:</span>
                             <input
                               type="number"
                               min="1"
                               max="50"
                               value={cat.totalTables}
                               onChange={(e) => handleUpdateCategoryField(cat.id, 'totalTables', Number(e.target.value) || 1)}
-                              className="w-12 px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 font-mono text-center text-xs font-bold focus:outline-none"
+                              className="w-12 px-1.5 py-0.5 rounded-lg bg-black/60 border border-amber-500/40 text-amber-300 font-mono text-center text-xs font-bold focus:outline-none"
                             />
                           </div>
 
                           <button
                             type="button"
                             onClick={() => handleRemoveTableCategory(cat.id)}
-                            className="w-7 h-7 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 flex items-center justify-center text-xs transition"
+                            className="w-8 h-8 rounded-xl bg-red-500/20 hover:bg-red-500/40 text-red-300 flex items-center justify-center text-sm transition"
                             title="Delete this table category"
                           >
                             🗑️
@@ -5801,7 +5949,7 @@
 
                       {/* Tier Pricing Curve Grid */}
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-[11px]">
+                        <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1">
                             <span>📈</span>
                             <span>Dynamic Surge Pricing Ranges:</span>
@@ -5809,7 +5957,7 @@
                           <button
                             type="button"
                             onClick={() => handleAddTierToCategory(cat.id)}
-                            className="text-[10px] px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold hover:bg-amber-500/30 transition"
+                            className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold hover:bg-amber-500/30 transition"
                           >
                             + Add Surge Tier
                           </button>
@@ -5817,9 +5965,9 @@
 
                         <div className="grid grid-cols-1 gap-2">
                           {(cat.tiers || []).map((tier, tierIdx) => (
-                            <div key={tierIdx} className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between flex-wrap gap-2 text-xs">
-                              <div className="flex items-center gap-2 flex-1 min-w-[150px]">
-                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
+                            <div key={tierIdx} className="p-3 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-between flex-wrap gap-2 text-xs">
+                              <div className="flex items-center gap-2 flex-1 min-w-[160px]">
+                                <span className="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
                                   T{tierIdx + 1}
                                 </span>
                                 <input
@@ -5827,59 +5975,59 @@
                                   value={tier.name}
                                   onChange={(e) => handleUpdateTierField(cat.id, tierIdx, 'name', e.target.value)}
                                   placeholder="Tier Name (e.g. Early Bird)"
-                                  className="bg-transparent text-white font-semibold text-xs focus:outline-none focus:border-b focus:border-amber-400 flex-1 min-w-[100px]"
+                                  className="bg-transparent text-white font-bold text-xs focus:outline-none focus:border-b focus:border-amber-400 flex-1 min-w-[100px]"
                                 />
                               </div>
 
                               <div className="flex items-center gap-3 flex-wrap">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400">Tables:</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-slate-400">Tables:</span>
                                   <input
                                     type="number"
                                     min="1"
                                     value={tier.minTable}
                                     onChange={(e) => handleUpdateTierField(cat.id, tierIdx, 'minTable', Number(e.target.value) || 1)}
-                                    className="w-10 px-1 py-0.5 rounded bg-black/60 border border-white/20 text-white font-mono text-center text-xs"
+                                    className="w-12 px-1.5 py-1 rounded-lg bg-black/60 border border-white/20 text-white font-mono text-center text-xs font-bold"
                                   />
-                                  <span className="text-slate-500">to</span>
+                                  <span className="text-slate-400 font-bold">to</span>
                                   <input
                                     type="number"
                                     min="1"
                                     value={tier.maxTable}
                                     onChange={(e) => handleUpdateTierField(cat.id, tierIdx, 'maxTable', Number(e.target.value) || 1)}
-                                    className="w-10 px-1 py-0.5 rounded bg-black/60 border border-white/20 text-white font-mono text-center text-xs"
+                                    className="w-12 px-1.5 py-1 rounded-lg bg-black/60 border border-white/20 text-white font-mono text-center text-xs font-bold"
                                   />
                                 </div>
 
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400">Price (₹):</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-slate-300 font-bold">Price (₹):</span>
                                   <input
                                     type="number"
                                     step="1000"
                                     min="1000"
                                     value={tier.price}
                                     onChange={(e) => handleUpdateTierField(cat.id, tierIdx, 'price', Number(e.target.value) || 0)}
-                                    className="w-20 px-2 py-0.5 rounded bg-black/60 border border-amber-500/40 text-amber-300 font-mono font-bold text-center text-xs"
+                                    className="w-24 px-2 py-1 rounded-lg bg-black/60 border border-amber-500/40 text-amber-300 font-mono font-bold text-center text-xs"
                                   />
                                 </div>
 
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-slate-400">F&amp;B Cover (₹):</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-slate-300 font-bold">F&amp;B Cover (₹):</span>
                                   <input
                                     type="number"
                                     step="1000"
                                     min="0"
                                     value={tier.minSpend}
                                     onChange={(e) => handleUpdateTierField(cat.id, tierIdx, 'minSpend', Number(e.target.value) || 0)}
-                                    className="w-20 px-2 py-0.5 rounded bg-black/60 border border-emerald-500/40 text-emerald-300 font-mono font-bold text-center text-xs"
+                                    className="w-24 px-2 py-1 rounded-lg bg-black/60 border border-emerald-500/40 text-emerald-300 font-mono font-bold text-center text-xs"
                                   />
                                 </div>
 
-                                {cat.tiers.length > 1 && (
+                                {(cat.tiers || []).length > 1 && (
                                   <button
                                     type="button"
                                     onClick={() => handleRemoveTierFromCategory(cat.id, tierIdx)}
-                                    className="text-red-400 hover:text-red-300 p-1"
+                                    className="w-7 h-7 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 flex items-center justify-center text-xs transition"
                                     title="Delete Tier"
                                   >
                                     ✕
@@ -5894,9 +6042,9 @@
                       {/* Included VIP Perks Tag row */}
                       <div className="pt-1 flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-1.5 flex-wrap flex-1">
-                          <span className="text-[10px] text-slate-400">Included Perks:</span>
+                          <span className="text-xs text-slate-400 font-medium">Included Perks:</span>
                           {(cat.perks || []).map((p, i) => (
-                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                            <span key={i} className="text-xs px-2.5 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 font-semibold">
                               ✓ {p}
                             </span>
                           ))}
@@ -5908,27 +6056,27 @@
 
                 {/* Preset Table Category Templates Quick-Add Row */}
                 <div className="pt-2 flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] font-bold text-slate-400">➕ Add Quick Preset:</span>
+                  <span className="text-xs font-bold text-slate-300">➕ Add Category:</span>
                   <button
                     type="button"
                     onClick={() => handleAddTableCategory('cabana')}
-                    className="px-3 py-1 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold hover:bg-purple-500/30 transition"
+                    className="px-3 py-1.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-bold hover:bg-purple-500/30 transition"
                   >
                     👑 Owner Celebrity Cabana (15 Pax)
                   </button>
                   <button
                     type="button"
                     onClick={() => handleAddTableCategory('cocktail')}
-                    className="px-3 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold hover:bg-cyan-500/30 transition"
+                    className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-bold hover:bg-cyan-500/30 transition"
                   >
                     🍸 High-Top Cocktail Table (4 Pax)
                   </button>
                   <button
                     type="button"
                     onClick={() => handleAddTableCategory('custom')}
-                    className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/30 transition"
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-amber-300 border border-amber-500/50 text-xs font-black hover:opacity-90 transition shadow-md"
                   >
-                    ✨ Custom Table Category
+                    ✨ + Custom Table Category
                   </button>
                 </div>
               </div>
@@ -5936,11 +6084,11 @@
               {/* Section 5: Approved PR Guest Perks Studio */}
               <div className="space-y-3 p-4 rounded-2xl bg-black/40 border border-white/10">
                 <div className="flex items-center justify-between pb-2 border-b border-white/10 flex-wrap gap-2">
-                  <div className="flex items-center gap-2 text-slate-200 font-bold">
-                    <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">5</span>
+                  <div className="flex items-center gap-2 text-white font-bold text-sm">
+                    <span className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-xs font-mono font-bold">5</span>
                     <span>Approved PR Guest Perks &amp; Value Customization</span>
                   </div>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-xs text-slate-400">
                     Promoters can bundle enabled perks in their bidding offers
                   </span>
                 </div>
@@ -5950,7 +6098,7 @@
                   {perksList.map((perk) => (
                     <div
                       key={perk.id}
-                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 transition ${
+                      className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition ${
                         perk.enabled
                           ? 'bg-teal-500/10 border-teal-400/40 text-white'
                           : 'bg-white/5 border-white/10 text-slate-500'
@@ -5967,26 +6115,26 @@
                           type="text"
                           value={perk.name}
                           onChange={(e) => handleUpdatePerkName(perk.id, e.target.value)}
-                          className={`bg-transparent font-semibold text-xs focus:outline-none focus:border-b focus:border-teal-400 flex-1 truncate ${
+                          className={`bg-transparent font-bold text-xs focus:outline-none focus:border-b focus:border-teal-400 flex-1 truncate ${
                             perk.enabled ? 'text-white' : 'text-slate-500'
                           }`}
                         />
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[10px] font-mono text-slate-400">Value (₹):</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-mono text-slate-400 font-bold">Value (₹):</span>
                         <input
                           type="number"
                           min="0"
                           step="50"
                           value={perk.value}
                           onChange={(e) => handleUpdatePerkValue(perk.id, e.target.value)}
-                          className="w-20 px-2 py-1 rounded-lg bg-black/60 border border-white/20 text-teal-300 font-mono font-bold text-center text-xs focus:border-teal-400 focus:outline-none"
+                          className="w-24 px-2.5 py-1 rounded-lg bg-black/60 border border-white/20 text-teal-300 font-mono font-bold text-center text-xs focus:border-teal-400 focus:outline-none"
                         />
                         <button
                           type="button"
                           onClick={() => handleDeletePerk(perk.id)}
-                          className="w-7 h-7 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 flex items-center justify-center text-xs transition"
+                          className="w-8 h-8 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 flex items-center justify-center text-sm transition"
                           title="Delete perk"
                         >
                           🗑️
@@ -5999,14 +6147,14 @@
                 {/* Add New Perk Toolbar */}
                 <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-2">
-                    <label className="block text-[11px] font-bold text-slate-300">
+                    <label className="block text-xs font-bold text-slate-200">
                       📦 Pick from Standard Club Perks Catalog:
                     </label>
                     <div className="flex items-center gap-2">
                       <select
                         value={catalogSelectedPerk}
                         onChange={(e) => setCatalogSelectedPerk(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:border-teal-400 focus:outline-none min-w-0"
+                        className="flex-1 px-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:border-teal-400 focus:outline-none min-w-0"
                       >
                         <option value="" className="bg-slate-900 text-slate-400">-- Choose Standard Perk --</option>
                         {PERK_CATALOG.map((cat) => (
@@ -6019,7 +6167,7 @@
                         type="button"
                         onClick={handleAddCatalogPerk}
                         disabled={!catalogSelectedPerk}
-                        className="px-3.5 py-2 rounded-xl bg-teal-500/20 border border-teal-400/40 text-teal-300 font-bold hover:bg-teal-500/40 disabled:opacity-40 transition shrink-0"
+                        className="px-3.5 py-2 rounded-xl bg-teal-500/20 border border-teal-400/40 text-teal-300 font-bold hover:bg-teal-500/40 disabled:opacity-40 transition shrink-0 text-xs"
                       >
                         + Add
                       </button>
@@ -6027,7 +6175,7 @@
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-2">
-                    <label className="block text-[11px] font-bold text-slate-300">
+                    <label className="block text-xs font-bold text-slate-200">
                       ✨ Or Create Custom Perk &amp; Value:
                     </label>
                     <div className="flex items-center gap-2">
@@ -6036,10 +6184,10 @@
                         placeholder="e.g. VIP Table Butler"
                         value={newCustomPerkName}
                         onChange={(e) => setNewCustomPerkName(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:border-teal-400 focus:outline-none min-w-0"
+                        className="flex-1 px-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:border-teal-400 focus:outline-none min-w-0"
                       />
-                      <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl px-2 py-1 shrink-0">
-                        <span className="text-[11px] text-teal-400 font-mono">₹</span>
+                      <div className="flex items-center gap-1 bg-black/60 border border-white/15 rounded-xl px-2.5 py-1.5 shrink-0">
+                        <span className="text-xs text-teal-400 font-mono font-bold">₹</span>
                         <input
                           type="number"
                           placeholder="500"
@@ -6047,13 +6195,13 @@
                           step="50"
                           value={newCustomPerkValue}
                           onChange={(e) => setNewCustomPerkValue(e.target.value)}
-                          className="w-14 bg-transparent text-teal-300 font-mono font-bold text-center text-xs focus:outline-none"
+                          className="w-16 bg-transparent text-teal-300 font-mono font-bold text-center text-xs focus:outline-none"
                         />
                       </div>
                       <button
                         type="button"
                         onClick={handleAddCustomPerk}
-                        className="px-3.5 py-2 rounded-xl bg-purple-500/20 border border-purple-400/40 text-purple-300 font-bold hover:bg-purple-500/40 transition shrink-0"
+                        className="px-3.5 py-2 rounded-xl bg-purple-500/20 border border-purple-400/40 text-purple-300 font-bold hover:bg-purple-500/40 transition shrink-0 text-xs"
                       >
                         + Add
                       </button>
@@ -6063,29 +6211,29 @@
               </div>
 
               {/* Section 6: Description & Guidelines */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between pb-1 border-b border-white/5 text-slate-200 font-bold">
+              <div className="space-y-2 p-4 rounded-2xl bg-black/40 border border-white/10">
+                <div className="flex items-center justify-between pb-2 border-b border-white/10 text-white font-bold text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-[10px] font-mono">6</span>
+                    <span className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-300 flex items-center justify-center text-xs font-mono font-bold">6</span>
                     <span>Event Description, Artist Bio &amp; Bottle Guidelines</span>
                   </div>
-                  <span className="text-[10px] text-teal-400">Auto-Formats on Blur</span>
+                  <span className="text-xs text-teal-400 font-medium">Auto-Formats on Blur</span>
                 </div>
                 <textarea
-                  rows="2"
+                  rows="3"
                   placeholder="Enter DJ bio, dress code guidelines, or table booking info..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   onBlur={(e) => setDescription(sanitizeNightlifeSentence(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white focus:border-teal-400 focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white focus:border-teal-400 focus:outline-none text-sm leading-relaxed"
                 />
               </div>
 
               {/* Pinned Submit CTA */}
-              <div className="pt-2">
+              <div className="pt-3">
                 <button
                   type="submit"
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-400 text-black font-black text-sm shadow-xl hover:opacity-95 transition flex items-center justify-center gap-2 btn-glow"
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-400 text-black font-black text-sm shadow-xl hover:opacity-95 transition flex items-center justify-center gap-2 btn-glow"
                 >
                   <span>🚀 Launch Event, VIP Tables &amp; PR Bidding Studio</span>
                 </button>
@@ -6096,6 +6244,7 @@
         document.body
       );
     };
+
 
     // --- CLUB OWNER & GATE SCANNER VIEW COMPONENT ---
     const OwnerView = ({ onOpenPRNetwork, onOpenCityEvents, onOpenClaimClub }) => {
@@ -6697,51 +6846,51 @@
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                        {activeMatrixEvent.tableCategories.map((tCat) => {
+                        {(activeMatrixEvent.tableCategories || []).map((tCat) => {
                           const tInfo = getTableCategoryTierInfo(tCat);
-                          const bookedPct = Math.round((tInfo.bookedTables / (tInfo.totalTables || 1)) * 100);
+                          const bookedPct = Math.round(((tInfo.bookedTables || 0) / (tInfo.totalTables || 1)) * 100);
 
                           return (
-                            <div key={tCat.id} className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+                            <div key={tCat.id} className="p-3.5 rounded-2xl bg-black/60 border border-white/15 space-y-2.5 shadow-md">
                               <div className="flex items-start justify-between gap-1">
                                 <div>
-                                  <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold">
+                                  <span className="text-xs uppercase font-mono px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
                                     {tCat.badge || 'VIP'}
                                   </span>
-                                  <h5 className="font-bold text-white text-xs mt-0.5">{tCat.name}</h5>
-                                  <span className="text-[10px] text-slate-400">{tCat.paxPerTable} Guests / Table</span>
+                                  <h5 className="font-bold text-white text-sm mt-1">{tCat.name}</h5>
+                                  <span className="text-xs text-slate-300 font-medium">{tCat.paxPerTable} Guests / Table</span>
                                 </div>
                                 <div className="text-right font-mono">
-                                  <div className="text-xs font-black text-amber-300">
-                                    ₹{tInfo.currentPrice.toLocaleString('en-IN')}
+                                  <div className="text-sm font-black text-amber-300">
+                                    ₹{(tInfo.currentPrice || 0).toLocaleString('en-IN')}
                                   </div>
-                                  <span className="text-[9px] text-emerald-400">
-                                    ₹{tInfo.currentMinSpend.toLocaleString('en-IN')} F&amp;B
+                                  <span className="text-xs text-emerald-400 font-bold">
+                                    ₹{(tInfo.currentMinSpend || 0).toLocaleString('en-IN')} F&amp;B
                                   </span>
                                 </div>
                               </div>
 
-                              <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] text-slate-300 font-mono">
+                              <div className="space-y-1.5">
+                                <div className="flex justify-between text-xs text-slate-200 font-mono font-medium">
                                   <span>Allocated: <b>{tInfo.bookedTables} / {tInfo.totalTables}</b></span>
                                   <span className={tInfo.remainingTables <= 1 ? 'text-rose-400 font-bold' : 'text-teal-300 font-bold'}>
                                     {tInfo.isSoldOut ? 'SOLD OUT' : `${tInfo.remainingTables} Left (Table #${tInfo.nextTableNum})`}
                                   </span>
                                 </div>
-                                <div className="w-full bg-black/60 h-1.5 rounded-full overflow-hidden">
+                                <div className="w-full bg-black/70 h-2 rounded-full overflow-hidden border border-white/10">
                                   <div
                                     className={`h-full rounded-full transition-all ${
-                                      tInfo.isSoldOut ? 'bg-rose-500' : 'bg-gradient-to-r from-amber-400 to-yellow-300'
+                                      tInfo.isSoldOut ? 'bg-rose-500' : 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500'
                                     }`}
                                     style={{ width: `${bookedPct}%` }}
                                   />
                                 </div>
                               </div>
 
-                              <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[9px] text-slate-400">
-                                <span>Active: <b className="text-slate-200">{tInfo.activeTier?.name || 'Tier 1'}</b></span>
+                              <div className="pt-1.5 border-t border-white/10 flex items-center justify-between text-xs text-slate-300 font-medium">
+                                <span>Active: <b className="text-white">{tInfo.activeTier?.name || 'Tier 1'}</b></span>
                                 {tInfo.nextTierInfo && (
-                                  <span className="text-amber-300">Next: ₹{tInfo.nextTierInfo.price.toLocaleString('en-IN')}</span>
+                                  <span className="text-amber-300 font-bold">Next: ₹{(tInfo.nextTierInfo.price || 0).toLocaleString('en-IN')}</span>
                                 )}
                               </div>
                             </div>
@@ -7074,6 +7223,15 @@
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Event Creation & Table Inventory Studio Modal */}
+          {showCreateModal && (
+            <CreateEventModal
+              isOpen={showCreateModal}
+              onClose={() => setShowCreateModal(false)}
+              onEventCreated={() => setShowCreateModal(false)}
+            />
           )}
         </div>
       );
