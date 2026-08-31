@@ -31,6 +31,8 @@ class Venue(Base):
     gstin = Column(String, nullable=True)
     fssai = Column(String, nullable=True)
     verified = Column(Boolean, default=True)
+    owner_user_id = Column(String, nullable=True, index=True)  # phone-sub of claiming owner
+    owner_phone = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     events = relationship("Event", back_populates="venue")
@@ -165,6 +167,21 @@ class EscrowLedger(Base):
 
     booking = relationship("BookingPass", back_populates="ledger_transactions")
 
+class TableInventory(Base):
+    """
+    Denormalized per-category table counters enabling atomic, zero-oversell
+    VIP table allocation via a guarded UPDATE
+    (booked_tables + count <= total_tables). Mirrors the floor-capacity guard.
+    """
+    __tablename__ = "table_inventory"
+
+    event_id = Column(String, ForeignKey("events.id"), primary_key=True)
+    category_id = Column(String, primary_key=True)
+    category_name = Column(String, default="VIP Table")
+    booked_tables = Column(Integer, default=0)
+    total_tables = Column(Integer, default=0)
+
+
 class TableSpend(Base):
     __tablename__ = "table_spend"
 
@@ -173,6 +190,7 @@ class TableSpend(Base):
     venue_id = Column(String, ForeignKey("venues.id"), nullable=False)
     fnb_inr = Column(Integer, default=0)
     bottle_inr = Column(Integer, default=0)
+    pos_bill_id = Column(String, nullable=True)
     settled_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     venue = relationship("Venue", back_populates="table_spends")

@@ -173,3 +173,16 @@
      - Dynamic monitoring of booked vs available tables and active tier surge pricing.
   6. **Automated E2E Verification & Git Push**:
      - Executed full Puppeteer suite capturing 6 screenshots. Pushed commit `7199424` to `https://github.com/kbsingh1399/nightvibe.git`.
+
+## Turn: 5-Cycle Production Hardening — DB Persistence, Escrow Ledger, Zero-Oversell, Test Suite
+- **Request:** Execute the master Arena.ai production directive (5-cycle multi-persona loop, point-to-git references, no inline code dumping).
+- **Actions Executed:**
+  1. **CYCLE 1 (Personas)** — frictionless OTP with expiry + rate-limit + lockout; RBAC bid publishing with floor-price guardrails; venue-claim anti-fraud (per-venue PIN) binding `owner_user_id`; two-phase gate admission for bouncers; two-phase escrow for platform.
+  2. **CYCLE 2 (Persistence)** — added `backend/db.py` (SQLAlchemy engine/session, Postgres DSN / SQLite out-of-the-box, Redis wrapper w/ in-memory fallback) and `backend/seed.py` (idempotent mirror-parity seed). All 8+ tables now live. Full 3-recipient escrow ledger with Section 194H 2% TDS + 18% GST; money conservation asserted.
+  3. **CYCLE 3 (Security)** — moved nonce-burn to Redis w/ fail-closed prod + in-memory fallback; kept TOTP/HMAC + RBAC; fixed deadlock in in-memory distributed-lock fallback.
+  4. **CYCLE 4 (VIP/surge)** — added `TableInventory` table; VIP allocation now uses atomic guarded UPDATE (booked_tables+n<=total_tables) instead of lock+JSON (which over-allocated 14/6 under concurrency). Verified dynamic surge-tier pricing.
+  5. **CYCLE 5 (Pipelines)** — idempotent Razorpay webhook, MSG91 SMS/WhatsApp notifications module, CSV gate manifest + PR leaderboard analytics endpoints, `load_tests/locustfile.py`, `.env.example`.
+  6. **Fixes** — added missing `PyJWT` to requirements (security.py `import jwt` crash); fixed `seed.py` mutating `_EVENTS` (bids dropped on re-seed); added `pos_bill_id` column to `TableSpend`.
+  7. **Test suite** — `tests/` (auth, booking, security, ledger, webhooks, concurrency) → **32 passed**.
+- **Verification:** `pytest` 32 passed; `uvicorn backend.main:app` boots, `/api/health` OK, events served w/ bids; `npm run build` succeeds.
+- **Artifacts:** `PRODUCTION_READINESS_REPORT.md`, `backend/{db,seed,notifications}.py`, `tests/`, `load_tests/`, `.env.example`, `pytest.ini`, updated `requirements*.txt`.
