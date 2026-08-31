@@ -156,3 +156,20 @@
      - Audited via Puppeteer capturing 4 comprehensive screenshots across all interaction modes (`01_studio_top_section`, `02_studio_upload_mode`, `03_studio_pricing_and_perks`, `04_studio_bottom_section`).
 
 
+## Turn: VIP Tables, Dynamic Tier Ranges, AI Text Formatting & Club Owner Matrix
+- **User Request:** "Also in this we should have VIP table, VIP lounge etc also, we should give this option to Club Post process, where they can create max capacity floor/general ticket, no. of vip tables etc...They Themself should be able to create category and no. of tables etc and as soon as some book, one table etc should be reduced accordingly and backend should also be ready to handle each and everything....also, give range to put priice like if last 1-2 table 10K, 2-5 table 50K and if last 3 tables 6-8, then 1Lkakh etc...range. Explore and give more options to club owners...we need to give them flexibilty. Also, ensure that Even if they put text not in capital or correct format, then automatically text of post should be correctly formated. Use multiple skills to tackle it"
+- **Actions Executed:**
+  1. **VIP Table & Lounge Dynamic Tier Range Studio in `CreateEventModal`**:
+     - Enabled club owners to create, customize, and edit multiple VIP table categories (VIP Lounge 6-Pax, VVIP Stage 10-Pax, Owner Cabana 15-Pax, Cocktail Table 4-Pax).
+     - Implemented dynamic price range curves per category (e.g., Tables 1–2 @ ₹10k, Tables 3–5 @ ₹50k, Tables 6–8 @ ₹1 Lakh) with included F&B minimum spend credit cover.
+  2. **AI Smart Text Sanitizer & Auto-Formatting Engine**:
+     - Added `[✨ AI Auto-Format]` button and auto-sanitizers on blur to format event titles into Title Case and standardize nightlife acronyms (`EDM`, `VIP`, `VVIP`, `DJ`, `UPI`, `GST`, `F&B`, `KSHMR`, etc.).
+  3. **Dual-Mode Guest Booking Modal (`EventDetailModal`)**:
+     - Dual tabs between **🎟️ General Admission Passes & PR Bids** and **🍾 VIP Tables & Lounges**.
+     - Live surge warnings, remaining table count, and automated table number allocation.
+  4. **VIP Digital Pass Rendering (`MyPassesModal`)**:
+     - Rendered allocated table number, F&B voucher cover, and VIP hospitality perks.
+  5. **Club Owner Real-Time Table Inventory Matrix (`OwnerView`)**:
+     - Dynamic monitoring of booked vs available tables and active tier surge pricing.
+  6. **Automated E2E Verification & Git Push**:
+     - Executed full Puppeteer suite capturing 6 screenshots. Pushed commit `7199424` to `https://github.com/kbsingh1399/nightvibe.git`.
